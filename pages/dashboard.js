@@ -16,23 +16,17 @@ export default function Dashboard() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) {
-        router.replace("/auth");
+        router.push("/auth");
       } else {
         setLoading(false);
       }
     });
   }, [router]);
 
-  if (loading) {
-    return <p style={{ padding: 40 }}>Checking login…</p>;
-  }
+  if (loading) return <p>Loading...</p>;
 
-  return (
-    <div style={{ padding: 40 }}>
-      <h1>Welcome to ZeusBolt ⚡</h1>
-      <p>You are logged in.</p>
-    </div>
-  );
+  return <h1>Welcome to ZeusBolt</h1>;
 }
+
 
 
