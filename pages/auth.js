@@ -15,15 +15,11 @@ export default function AuthPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        router.push("/dashboard");
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        router.replace("/dashboard");
       }
     });
-
-    return () => subscription.unsubscribe();
   }, [router]);
 
   return (
@@ -36,4 +32,5 @@ export default function AuthPage() {
     </div>
   );
 }
+
 
