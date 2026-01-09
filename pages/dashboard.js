@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -6,6 +8,23 @@ const supabase = createClient(
 )
 
 export default function Dashboard() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        router.push('/auth')
+      } else {
+        setLoading(false)
+      }
+    })
+  }, [router])
+
+  if (loading) {
+    return <p style={{ padding: 40 }}>Loading...</p>
+  }
+
   return (
     <div style={{ padding: 40 }}>
       <h1>Welcome to ZeusBolt ⚡</h1>
@@ -24,3 +43,4 @@ export default function Dashboard() {
     </div>
   )
 }
+
