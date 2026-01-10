@@ -5,7 +5,7 @@ export const config = {
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase admin client (server-side only)
+// Server-side Supabase client (bypasses RLS safely)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -14,6 +14,9 @@ const supabase = createClient(
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// FREE TIER DAILY LIMIT
+const DAILY_LIMIT = 3;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -27,19 +30,43 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 🔒 LIMIT 1: One blueprint per project
-    const { data: existing } = await supabase
+    // --------------------------------------------------
+    // LIMIT 1: One blueprint per project
+    // --------------------------------------------------
+    const { data: existingBlueprint } = await supabase
       .from("blueprints")
       .select("id")
       .eq("project_id", project_id)
       .maybeSingle();
 
-    if (existing) {
+    if (existingBlueprint) {
       return res.status(403).json({
         error: "Blueprint already exists for this project.",
       });
     }
 
+    // --------------------------------------------------
+    // LIMIT 2: Daily per-user limit
+    // --------------------------------------------------
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data: usageRow } = await supabase
+      .from("ai_usage")
+      .select("id, count")
+      .eq("user_id", user_id)
+      .eq("usage_date", today)
+      .maybeSingle();
+
+    if (usageRow && usageRow.count >= DAILY_LIMIT) {
+      return res.status(429).json({
+        error:
+          "Daily AI limit reached (3/day). Please try again tomorrow or upgrade.",
+      });
+    }
+
+    // --------------------------------------------------
+    // AI GENERATION
+    // --------------------------------------------------
     const prompt = `
 You are an expert SaaS product architect.
 
@@ -68,15 +95,34 @@ Return ONLY valid JSON in this exact structure:
       max_tokens: 700,
     });
 
-    const text = response.choices[0].message.content;
-    const blueprint = JSON.parse(text);
+    const blueprint = JSON.parse(
+      response.choices[0].message.content
+    );
+
+    // --------------------------------------------------
+    // UPDATE USAGE COUNT (after successful AI call)
+    // --------------------------------------------------
+    if (usageRow) {
+      await supabase
+        .from("ai_usage")
+        .update({ count: usageRow.count + 1 })
+        .eq("id", usageRow.id);
+    } else {
+      await supabase.from("ai_usage").insert([
+        {
+          user_id,
+          usage_date: today,
+          count: 1,
+        },
+      ]);
+    }
 
     return res.status(200).json({
       success: true,
       blueprint,
     });
   } catch (err) {
-    console.error("AI error:", err);
+    console.error("AI generation error:", err);
     return res.status(500).json({
       error: "AI generation failed",
     });
