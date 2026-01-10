@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "@supabase/supabase-js";
 
-// Create Supabase client
+// Supabase client (frontend-safe)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -20,19 +20,24 @@ export default function ProjectDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Load project + blueprint
   useEffect(() => {
     if (!id) return;
 
     async function loadData() {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
         router.replace("/auth");
         return;
       }
 
+      // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("projects")
-        .select("id, title, idea, status, created_at")
+        .select("id, title, idea, status")
         .eq("id", id)
         .single();
 
@@ -43,9 +48,10 @@ export default function ProjectDetailPage() {
 
       setProject(projectData);
 
+      // Fetch blueprint (if exists)
       const { data: blueprintData } = await supabase
         .from("blueprints")
-        .select("id, content, created_at")
+        .select("content, created_at")
         .eq("project_id", id)
         .single();
 
@@ -60,36 +66,39 @@ export default function ProjectDetailPage() {
   }, [id, router]);
 
   async function handleGenerateBlueprint() {
-    if (!project) return;
-
-    setGenerating(true);
     setErrorMsg("");
+    setGenerating(true);
+
+    // Always fetch fresh session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      setErrorMsg("You are not logged in. Please log in again.");
+      setGenerating(false);
+      return;
+    }
 
     try {
-      // Call server API (test mode)
       const response = await fetch("/api/generate-blueprint", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-      body: JSON.stringify({
-  title: project.title,
-  idea: project.idea,
-  project_id: project.id,
-  user_id: session.user.id,
-}),
-
+        body: JSON.stringify({
+          title: project.title,
+          idea: project.idea,
+          project_id: project.id,
+          user_id: session.user.id,
+        }),
       });
 
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error("Failed to generate blueprint");
+      if (!response.ok) {
+        throw new Error(result.error || "Generation failed");
       }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
 
       // Save blueprint to Supabase
       const { error } = await supabase.from("blueprints").insert([
@@ -109,7 +118,9 @@ export default function ProjectDetailPage() {
         created_at: new Date().toISOString(),
       });
     } catch (err) {
-      setErrorMsg("Something went wrong while generating the blueprint.");
+      setErrorMsg(
+        err.message || "Something went wrong while generating the blueprint."
+      );
     }
 
     setGenerating(false);
@@ -129,7 +140,6 @@ export default function ProjectDetailPage() {
       </button>
 
       <h1>{project.title}</h1>
-
       <p style={{ color: "#666", marginBottom: 16 }}>
         Status: <strong>{project.status}</strong>
       </p>
