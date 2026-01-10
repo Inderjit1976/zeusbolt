@@ -37,11 +37,13 @@ export default function AuthPage() {
           - Handles login & signup
           - Shows error messages automatically
       */}
-      <Auth
-        supabaseClient={supabase}
-        appearance={{ theme: ThemeSupa }}
-        providers={[]}
-      />
+     <Auth
+  supabaseClient={supabase}
+  appearance={{ theme: ThemeSupa }}
+  providers={[]}
+  redirectTo="https://zeusbolt.vercel.app/dashboard"
+/>
+
     </div>
   );
 }
