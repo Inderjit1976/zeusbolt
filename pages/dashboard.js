@@ -97,14 +97,17 @@ export default function Dashboard() {
       ) : (
         <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
           {projects.map((project) => (
-            <div
-              key={project.id}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                padding: 16,
-              }}
-            >
+           <div
+  key={project.id}
+  onClick={() => router.push(`/projects/${project.id}`)}
+  style={{
+    border: "1px solid #ddd",
+    borderRadius: 8,
+    padding: 16,
+    cursor: "pointer",
+  }}
+>
+
               <h3 style={{ marginTop: 0 }}>{project.title}</h3>
               <p style={{ color: "#555" }}>{project.idea}</p>
               <small>
