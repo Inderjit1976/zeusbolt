@@ -72,10 +72,13 @@ export default function ProjectDetailPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          title: project.title,
-          idea: project.idea,
-        }),
+      body: JSON.stringify({
+  title: project.title,
+  idea: project.idea,
+  project_id: project.id,
+  user_id: session.user.id,
+}),
+
       });
 
       const result = await response.json();
