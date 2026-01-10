@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 
-// Create Supabase client using environment variables
+// Create Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -15,38 +15,41 @@ const supabase = createClient(
 export default function AuthPage() {
   const router = useRouter();
 
-  // If user is already logged in, send them to dashboard
   useEffect(() => {
+    // 1. If user is already logged in, go to dashboard
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         router.replace("/dashboard");
       }
     });
+
+    // 2. Listen for login events and redirect
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        router.replace("/dashboard");
+      }
+    });
+
+    // 3. Cleanup listener when page unmounts
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   return (
     <div style={{ maxWidth: 420, margin: "96px auto", textAlign: "center" }}>
-      <h1 style={{ marginBottom: 8 }}>Welcome to ZeusBolt</h1>
-      <p style={{ marginBottom: 24, color: "#666" }}>
+      <h1>Welcome to ZeusBolt</h1>
+      <p style={{ color: "#666", marginBottom: 24 }}>
         Log in to access your dashboard.
-        <br />
-        If your details are incorrect, an error message will appear below.
       </p>
 
-      {/* Supabase Auth UI
-          - Handles login & signup
-          - Shows error messages automatically
-      */}
-     <Auth
-  supabaseClient={supabase}
-  appearance={{ theme: ThemeSupa }}
-  providers={[]}
-  redirectTo="https://zeusbolt.vercel.app/dashboard"
-/>
-
+      <Auth
+        supabaseClient={supabase}
+        appearance={{ theme: ThemeSupa }}
+        providers={[]}
+      />
     </div>
   );
 }
-
-
-
