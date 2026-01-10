@@ -1,3 +1,7 @@
+export const config = {
+  runtime: "nodejs",
+};
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -5,19 +9,22 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
+  // Only allow POST requests
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { title, idea } = req.body || {};
+
   if (!title || !idea) {
     return res.status(400).json({ error: "Missing project data" });
   }
 
-  // Helpful check: confirm key exists on server (doesn't expose it)
+  // Confirm the key exists (does not expose it)
   if (!process.env.OPENAI_API_KEY) {
     return res.status(500).json({
-      error: "OPENAI_API_KEY is missing on the server (check Vercel env vars + redeploy).",
+      error:
+        "OPENAI_API_KEY is missing on the server. Check Vercel env vars and redeploy.",
     });
   }
 
@@ -47,11 +54,12 @@ Return ONLY valid JSON in this exact structure:
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,
-      max_tokens: 600,
+      max_tokens: 700,
     });
 
     const text = response?.choices?.[0]?.message?.content || "";
 
+    // Parse JSON safely
     let blueprint;
     try {
       blueprint = JSON.parse(text);
@@ -59,13 +67,15 @@ Return ONLY valid JSON in this exact structure:
       console.error("AI returned non-JSON:", text);
       return res.status(500).json({
         error: "AI returned invalid JSON format.",
-        detail: "Model output was not parseable JSON.",
       });
     }
 
-    return res.status(200).json({ success: true, blueprint });
+    return res.status(200).json({
+      success: true,
+      blueprint,
+    });
   } catch (err) {
-    // This is the key: capture real OpenAI error info
+    // Log the real OpenAI error to Vercel logs (safe)
     const status = err?.status || err?.response?.status || 500;
     const message =
       err?.message ||
