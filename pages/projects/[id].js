@@ -18,19 +18,18 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState(null);
   const [blueprint, setBlueprint] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (!id) return;
 
     async function loadData() {
-      // Check login
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         router.replace("/auth");
         return;
       }
 
-      // Load project
       const { data: projectData, error: projectError } = await supabase
         .from("projects")
         .select("id, title, idea, status, created_at")
@@ -44,7 +43,6 @@ export default function ProjectDetailPage() {
 
       setProject(projectData);
 
-      // Load blueprint (if exists)
       const { data: blueprintData } = await supabase
         .from("blueprints")
         .select("id, content, created_at")
@@ -65,39 +63,53 @@ export default function ProjectDetailPage() {
     if (!project) return;
 
     setGenerating(true);
+    setErrorMsg("");
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      // Call server API (test mode)
+      const response = await fetch("/api/generate-blueprint", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: project.title,
+          idea: project.idea,
+        }),
+      });
 
-    const placeholderBlueprint = {
-      overview: "This is a placeholder blueprint.",
-      pages: [
-        "Landing page",
-        "Login / Signup",
-        "User Dashboard",
-        "Settings page",
-      ],
-      dataModels: ["Users", "Projects"],
-      nextSteps: "AI generation will be added in the next phase.",
-    };
+      const result = await response.json();
 
-    const { error } = await supabase.from("blueprints").insert([
-      {
-        user_id: session.user.id,
-        project_id: project.id,
-        content: placeholderBlueprint,
-      },
-    ]);
+      if (!response.ok || !result.success) {
+        throw new Error("Failed to generate blueprint");
+      }
 
-    setGenerating(false);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (!error) {
+      // Save blueprint to Supabase
+      const { error } = await supabase.from("blueprints").insert([
+        {
+          user_id: session.user.id,
+          project_id: project.id,
+          content: result.blueprint,
+        },
+      ]);
+
+      if (error) {
+        throw error;
+      }
+
       setBlueprint({
-        content: placeholderBlueprint,
+        content: result.blueprint,
         created_at: new Date().toISOString(),
       });
+    } catch (err) {
+      setErrorMsg("Something went wrong while generating the blueprint.");
     }
+
+    setGenerating(false);
   }
 
   if (loading) {
@@ -123,6 +135,10 @@ export default function ProjectDetailPage() {
       <p style={{ whiteSpace: "pre-wrap", marginBottom: 24 }}>
         {project.idea}
       </p>
+
+      {errorMsg && (
+        <p style={{ color: "red", marginBottom: 12 }}>{errorMsg}</p>
+      )}
 
       {!blueprint ? (
         <button
