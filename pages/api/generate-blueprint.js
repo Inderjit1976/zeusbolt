@@ -5,7 +5,6 @@ export const config = {
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 
-// Server-side Supabase client (bypasses RLS safely)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -15,8 +14,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// FREE TIER DAILY LIMIT
 const DAILY_LIMIT = 3;
+
+// Helper: extract JSON safely from AI output
+function extractJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No JSON found in AI output");
+    return JSON.parse(match[0]);
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -24,49 +33,42 @@ export default async function handler(req, res) {
   }
 
   const { title, idea, project_id, user_id } = req.body || {};
-
   if (!title || !idea || !project_id || !user_id) {
     return res.status(400).json({ error: "Missing required data" });
   }
 
   try {
-    // --------------------------------------------------
-    // LIMIT 1: One blueprint per project
-    // --------------------------------------------------
-    const { data: existingBlueprint } = await supabase
+    // LIMIT 1 — one blueprint per project
+    const { data: existing } = await supabase
       .from("blueprints")
       .select("id")
       .eq("project_id", project_id)
       .maybeSingle();
 
-    if (existingBlueprint) {
+    if (existing) {
       return res.status(403).json({
         error: "Blueprint already exists for this project.",
       });
     }
 
-    // --------------------------------------------------
-    // LIMIT 2: Daily per-user limit
-    // --------------------------------------------------
+    // LIMIT 2 — daily per-user limit
     const today = new Date().toISOString().split("T")[0];
 
-    const { data: usageRow } = await supabase
+    const { data: usage } = await supabase
       .from("ai_usage")
       .select("id, count")
       .eq("user_id", user_id)
       .eq("usage_date", today)
       .maybeSingle();
 
-    if (usageRow && usageRow.count >= DAILY_LIMIT) {
+    if (usage && usage.count >= DAILY_LIMIT) {
       return res.status(429).json({
         error:
           "Daily AI limit reached (3/day). Please try again tomorrow or upgrade.",
       });
     }
 
-    // --------------------------------------------------
-    // AI GENERATION
-    // --------------------------------------------------
+    // AI generation
     const prompt = `
 You are an expert SaaS product architect.
 
@@ -95,18 +97,15 @@ Return ONLY valid JSON in this exact structure:
       max_tokens: 700,
     });
 
-    const blueprint = JSON.parse(
-      response.choices[0].message.content
-    );
+    const rawText = response.choices[0].message.content;
+    const blueprint = extractJson(rawText);
 
-    // --------------------------------------------------
-    // UPDATE USAGE COUNT (after successful AI call)
-    // --------------------------------------------------
-    if (usageRow) {
+    // Update usage AFTER successful AI call
+    if (usage) {
       await supabase
         .from("ai_usage")
-        .update({ count: usageRow.count + 1 })
-        .eq("id", usageRow.id);
+        .update({ count: usage.count + 1 })
+        .eq("id", usage.id);
     } else {
       await supabase.from("ai_usage").insert([
         {
