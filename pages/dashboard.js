@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "@supabase/supabase-js";
 
-// Create Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -12,41 +11,44 @@ const supabase = createClient(
 
 export default function Dashboard() {
   const router = useRouter();
-
   const [loading, setLoading] = useState(true);
-  const [projects, setProjects] = useState([]);
+  const [userEmail, setUserEmail] = useState("");
 
-  // Check login and load projects
   useEffect(() => {
-    async function loadDashboard() {
-      const { data: sessionData } = await supabase.auth.getSession();
+    async function checkSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      // If not logged in, go to /auth
-      if (!sessionData.session) {
+      if (!session) {
         router.replace("/auth");
         return;
       }
 
-      // Load projects for this user
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id, title, idea, status, created_at")
-        .order("created_at", { ascending: false });
-
-      if (!error) {
-        setProjects(data || []);
-      }
-
+      setUserEmail(session.user.email);
       setLoading(false);
     }
 
-    loadDashboard();
+    checkSession();
   }, [router]);
 
-  // Logout handler
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace("/auth");
+  }
+
+  async function handleUpgrade() {
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+    });
+
+    const data = await res.json();
+
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert("Unable to start checkout. Please try again.");
+    }
   }
 
   if (loading) {
@@ -55,69 +57,54 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: 40, maxWidth: 900, margin: "0 auto" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 20,
-        }}
-      >
-        <h1>ZeusBolt Dashboard ⚡</h1>
+      <h1>Welcome to ZeusBolt ⚡</h1>
+      <p style={{ color: "#555" }}>
+        Logged in as <strong>{userEmail}</strong>
+      </p>
 
+      {/* UPGRADE BUTTON */}
+      <div style={{ marginTop: 20 }}>
         <button
-          onClick={handleLogout}
+          onClick={handleUpgrade}
           style={{
-            padding: "8px 14px",
-            fontSize: 14,
+            padding: "12px 18px",
+            fontSize: 16,
             cursor: "pointer",
+            backgroundColor: "#000",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
           }}
         >
-          Log out
+          Upgrade to Pro 🚀
         </button>
       </div>
 
-      <div style={{ marginBottom: 24 }}>
+      {/* DASHBOARD ACTIONS */}
+      <div style={{ marginTop: 40 }}>
         <button
           onClick={() => router.push("/projects/new")}
           style={{
             padding: "10px 16px",
             fontSize: 16,
             cursor: "pointer",
+            marginRight: 12,
           }}
         >
-          + Create New Project
+          Create New Project
+        </button>
+
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: "10px 16px",
+            fontSize: 16,
+            cursor: "pointer",
+          }}
+        >
+          Log out
         </button>
       </div>
-
-      <h2>Your Projects</h2>
-
-      {projects.length === 0 ? (
-        <p>You haven’t created any projects yet.</p>
-      ) : (
-        <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-          {projects.map((project) => (
-           <div
-  key={project.id}
-  onClick={() => router.push(`/projects/${project.id}`)}
-  style={{
-    border: "1px solid #ddd",
-    borderRadius: 8,
-    padding: 16,
-    cursor: "pointer",
-  }}
->
-
-              <h3 style={{ marginTop: 0 }}>{project.title}</h3>
-              <p style={{ color: "#555" }}>{project.idea}</p>
-              <small>
-                Status: {project.status} • Created{" "}
-                {new Date(project.created_at).toLocaleString()}
-              </small>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
