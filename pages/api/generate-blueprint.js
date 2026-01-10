@@ -15,14 +15,15 @@ const openai = new OpenAI({
 });
 
 const DAILY_LIMIT = 3;
+const COOLDOWN_SECONDS = 10;
 
-// Helper: extract JSON safely from AI output
+// Safely extract JSON from AI output
 function extractJson(text) {
   try {
     return JSON.parse(text);
   } catch {
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("No JSON found in AI output");
+    if (!match) throw new Error("No JSON found");
     return JSON.parse(match[0]);
   }
 }
@@ -38,7 +39,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // LIMIT 1 — one blueprint per project
+    // --------------------------------------------------
+    // LIMIT 1 — One blueprint per project
+    // --------------------------------------------------
     const { data: existing } = await supabase
       .from("blueprints")
       .select("id")
@@ -51,12 +54,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // LIMIT 2 — daily per-user limit
+    // --------------------------------------------------
+    // LIMIT 2 — Daily per-user limit
+    // --------------------------------------------------
     const today = new Date().toISOString().split("T")[0];
 
     const { data: usage } = await supabase
       .from("ai_usage")
-      .select("id, count")
+      .select("id, count, last_request_at")
       .eq("user_id", user_id)
       .eq("usage_date", today)
       .maybeSingle();
@@ -68,7 +73,24 @@ export default async function handler(req, res) {
       });
     }
 
-    // AI generation
+    // --------------------------------------------------
+    // LIMIT 3 — Rate limit (cooldown)
+    // --------------------------------------------------
+    if (usage?.last_request_at) {
+      const last = new Date(usage.last_request_at).getTime();
+      const now = Date.now();
+      const diffSeconds = (now - last) / 1000;
+
+      if (diffSeconds < COOLDOWN_SECONDS) {
+        return res.status(429).json({
+          error: "Please wait a few seconds before trying again.",
+        });
+      }
+    }
+
+    // --------------------------------------------------
+    // AI GENERATION
+    // --------------------------------------------------
     const prompt = `
 You are an expert SaaS product architect.
 
@@ -100,11 +122,16 @@ Return ONLY valid JSON in this exact structure:
     const rawText = response.choices[0].message.content;
     const blueprint = extractJson(rawText);
 
-    // Update usage AFTER successful AI call
+    // --------------------------------------------------
+    // UPDATE USAGE (after successful AI call)
+    // --------------------------------------------------
     if (usage) {
       await supabase
         .from("ai_usage")
-        .update({ count: usage.count + 1 })
+        .update({
+          count: usage.count + 1,
+          last_request_at: new Date().toISOString(),
+        })
         .eq("id", usage.id);
     } else {
       await supabase.from("ai_usage").insert([
@@ -112,6 +139,7 @@ Return ONLY valid JSON in this exact structure:
           user_id,
           usage_date: today,
           count: 1,
+          last_request_at: new Date().toISOString(),
         },
       ]);
     }
