@@ -17,7 +17,7 @@ export default function Dashboard() {
   const [isPro, setIsPro] = useState(false);
   const [error, setError] = useState("");
 
-  // 1️⃣ Check login + subscription
+  // Load user + subscription
   useEffect(() => {
     const loadDashboard = async () => {
       const {
@@ -31,14 +31,13 @@ export default function Dashboard() {
 
       setUser(session.user);
 
-      // Read subscription status
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("subscriptions")
         .select("plan, status")
         .eq("user_id", session.user.id)
         .single();
 
-      if (data && data.plan === "pro" && data.status === "active") {
+      if (data?.plan === "pro" && data?.status === "active") {
         setIsPro(true);
       }
 
@@ -48,7 +47,7 @@ export default function Dashboard() {
     loadDashboard();
   }, [router]);
 
-  // 2️⃣ Start Stripe checkout
+  // Start Stripe checkout (Free users only)
   const handleUpgrade = async () => {
     setError("");
 
@@ -69,7 +68,7 @@ export default function Dashboard() {
     }
   };
 
-  // 3️⃣ Logout
+  // Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/auth");
@@ -88,34 +87,16 @@ export default function Dashboard() {
       </p>
 
       {isPro ? (
-        <p style={{ color: "green", fontWeight: "bold" }}>
-          ✅ You are a Pro user
-        </p>
-      ) : (
-        <>
-          <p>You are on the Free plan.</p>
-
-          <button
-            onClick={handleUpgrade}
-            style={{
-              marginTop: 20,
-              padding: "12px 20px",
-              fontSize: 16,
-              cursor: "pointer",
-            }}
-          >
-            Upgrade to Pro 🚀
-          </button>
-
-          {error && (
-            <p style={{ color: "red", marginTop: 10 }}>{error}</p>
-          )}
-        </>
-      )}
-
-      <hr style={{ margin: "40px 0" }} />
-
-      <button onClick={handleLogout}>Log out</button>
-    </div>
-  );
-}
+        <div
+          style={{
+            marginTop: 20,
+            padding: 16,
+            background: "#eaffea",
+            borderRadius: 6,
+          }}
+        >
+          <p style={{ color: "green", fontWeight: "bold", margin: 0 }}>
+            ✅ Pro plan active
+          </p>
+          <p style={{ marginTop: 6 }}>
+            You have
