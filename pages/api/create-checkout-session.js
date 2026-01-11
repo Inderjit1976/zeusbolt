@@ -34,14 +34,22 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid user" });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      line_items: [
-        {
-          price: "price_1So5HCQYwmMPeFokR9rSF68E",
-          quantity: 1,
-        },
-      ],
+   const session = await stripe.checkout.sessions.create({
+  mode: "subscription",
+  line_items: [
+    {
+      price: "price_1So5HCQYwmMPeFokR9rSF68E",
+      quantity: 1,
+    },
+  ],
+  metadata: {
+    user_id: user.id, // 👈 THIS IS CRITICAL
+  },
+  success_url: "https://zeusbolt.vercel.app/dashboard?payment=success",
+  cancel_url: "https://zeusbolt.vercel.app/dashboard?payment=cancel",
+});
+
+      
 
       // 🔑 THIS IS THE FIX
       metadata: {
