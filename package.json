@@ -16,6 +16,7 @@
   "@supabase/auth-ui-shared": "^0.1.8",
   "openai": "^4.0.0",
     "stripe": "^14.0.0"
+"micro": "^9.4.1"
 
 }
 
