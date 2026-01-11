@@ -53,7 +53,10 @@ export default function Dashboard() {
       });
 
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error();
+
+      if (!res.ok || !data.url) {
+        throw new Error();
+      }
 
       window.location.href = data.url;
     } catch {
@@ -64,22 +67,30 @@ export default function Dashboard() {
   const handleManageBilling = async () => {
     setError("");
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) return;
-
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error("No session");
+      }
+
       const res = await fetch("/api/create-portal-session", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          userId: session.user.id,
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error();
+
+      if (!res.ok || !data.url) {
+        throw new Error();
+      }
 
       window.location.href = data.url;
     } catch {
