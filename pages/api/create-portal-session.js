@@ -13,38 +13,44 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
+  try {
     const { userId } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
     }
 
-    // 1️⃣ Get Stripe customer ID from Supabase
+    // Fetch Stripe customer ID from Supabase
     const { data, error } = await supabase
       .from("subscriptions")
       .select("stripe_customer_id")
       .eq("user_id", userId)
       .single();
 
-    if (error || !data?.stripe_customer_id) {
-      throw new Error("Stripe customer not found");
+    if (error || !data || !data.stripe_customer_id) {
+      console.error("Stripe customer lookup failed:", error, data);
+      return res.status(400).json({
+        error: "Stripe customer not found for this user",
+      });
     }
 
-    // 2️⃣ Create billing portal session
+    // Create Stripe Billing Portal session
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: data.stripe_customer_id,
       return_url: "https://zeusbolt.vercel.app/dashboard",
     });
 
-    // 3️⃣ Return URL
-    return res.status(200).json({ url: portalSession.url });
+    return res.status(200).json({
+      url: portalSession.url,
+    });
   } catch (err) {
-    console.error("Billing portal error:", err.message);
-    return res.status(500).json({ error: err.message });
+    console.error("Billing portal error:", err);
+    return res.status(500).json({
+      error: "Unable to open billing portal",
+    });
   }
 }
