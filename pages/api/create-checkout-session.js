@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
       line_items: [
         {
-          price: "YOUR_PRICE_ID_HERE", // 👈 paste price_... here
+          price: "price_1So5HCQYwmMPeFokR9rSF68E",
           quantity: 1,
         },
       ],
@@ -29,11 +29,10 @@ export default async function handler(req, res) {
     });
 
     return res.status(200).json({ url: session.url });
-  } catch (error) {
-    console.error("Stripe error:", error);
+  } catch (err) {
+    console.error("Stripe checkout error:", err);
     return res.status(500).json({
       error: "Unable to create checkout session",
     });
   }
 }
-
