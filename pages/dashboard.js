@@ -47,21 +47,43 @@ export default function Dashboard() {
 
   const handleUpgrade = async () => {
     setError("");
-
     try {
       const res = await fetch("/api/create-checkout-session", {
         method: "POST",
       });
 
       const data = await res.json();
-
-      if (!res.ok || !data.url) {
-        throw new Error("Checkout failed");
-      }
+      if (!res.ok || !data.url) throw new Error();
 
       window.location.href = data.url;
     } catch {
       setError("Unable to start checkout. Please try again.");
+    }
+  };
+
+  const handleManageBilling = async () => {
+    setError("");
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) return;
+
+    try {
+      const res = await fetch("/api/create-portal-session", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error();
+
+      window.location.href = data.url;
+    } catch {
+      setError("Unable to open billing portal.");
     }
   };
 
@@ -94,9 +116,17 @@ export default function Dashboard() {
           <p style={{ color: "green", fontWeight: "bold", margin: 0 }}>
             ✅ Pro plan active
           </p>
-          <p style={{ marginTop: 6 }}>
-            You have full access to ZeusBolt features.
-          </p>
+
+          <button
+            onClick={handleManageBilling}
+            style={{
+              marginTop: 12,
+              padding: "10px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Manage Billing
+          </button>
         </div>
       ) : (
         <div style={{ marginTop: 20 }}>
@@ -113,12 +143,10 @@ export default function Dashboard() {
           >
             Upgrade to Pro 🚀
           </button>
-
-          {error && (
-            <p style={{ color: "red", marginTop: 10 }}>{error}</p>
-          )}
         </div>
       )}
+
+      {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
 
       <hr style={{ margin: "40px 0" }} />
 
