@@ -5,153 +5,86 @@ export const config = {
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const DAILY_LIMIT = 3;
-const COOLDOWN_SECONDS = 10;
-
-// Safely extract JSON from AI output
-function extractJson(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("No JSON found");
-    return JSON.parse(match[0]);
-  }
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { title, idea, project_id, user_id } = req.body || {};
-  if (!title || !idea || !project_id || !user_id) {
-    return res.status(400).json({ error: "Missing required data" });
-  }
-
   try {
-    // --------------------------------------------------
-    // LIMIT 1 — One blueprint per project
-    // --------------------------------------------------
-    const { data: existing } = await supabase
-      .from("blueprints")
-      .select("id")
-      .eq("project_id", project_id)
-      .maybeSingle();
+    const { projectId, appIdea } = req.body;
 
-    if (existing) {
-      return res.status(403).json({
-        error: "Blueprint already exists for this project.",
-      });
+    if (!projectId || !appIdea) {
+      return res.status(400).json({ error: "Missing project data" });
     }
 
-    // --------------------------------------------------
-    // LIMIT 2 — Daily per-user limit
-    // --------------------------------------------------
-    const today = new Date().toISOString().split("T")[0];
-
-    const { data: usage } = await supabase
-      .from("ai_usage")
-      .select("id, count, last_request_at")
-      .eq("user_id", user_id)
-      .eq("usage_date", today)
-      .maybeSingle();
-
-    if (usage && usage.count >= DAILY_LIMIT) {
-      return res.status(429).json({
-        error:
-          "Daily AI limit reached (3/day). Please try again tomorrow or upgrade.",
-      });
-    }
-
-    // --------------------------------------------------
-    // LIMIT 3 — Rate limit (cooldown)
-    // --------------------------------------------------
-    if (usage?.last_request_at) {
-      const last = new Date(usage.last_request_at).getTime();
-      const now = Date.now();
-      const diffSeconds = (now - last) / 1000;
-
-      if (diffSeconds < COOLDOWN_SECONDS) {
-        return res.status(429).json({
-          error: "Please wait a few seconds before trying again.",
-        });
-      }
-    }
-
-    // --------------------------------------------------
-    // AI GENERATION
-    // --------------------------------------------------
+    // ZEUSBOLT BLUEPRINT PROMPT (FRIENDLY + PROFESSIONAL)
     const prompt = `
-You are an expert SaaS product architect.
+You are ZeusBolt, an expert AI app builder helping non-technical founders turn ideas into real applications.
 
-Based on the following app idea, generate a structured JSON blueprint.
+Write a clear, structured APP BLUEPRINT using simple, friendly, professional language.
+Do NOT use technical jargon.
+Do NOT mention specific programming languages or frameworks.
+Focus on clarity, confidence, and real-world usefulness.
 
-App Title:
-${title}
+Follow this EXACT structure and use clear section headings:
+
+1. App Overview
+Explain what the app is, who it is for, and the main problem it solves.
+
+2. Target Users & Roles
+List the types of users and what each one does in simple terms.
+
+3. Core Features
+Bullet point the main features users will care about.
+
+4. Pages & Screens
+List the main pages or screens the app will have.
+
+5. Information & Data Stored
+Explain what kind of information the app needs to store (in plain English).
+
+6. Monetisation Ideas
+Suggest 1–3 realistic ways this app could make money.
+
+7. ZeusBolt Build Readiness
+End with a short statement explaining that this app can be built using ZeusBolt and is suitable for a web-first launch.
 
 App Idea:
-${idea}
-
-Return ONLY valid JSON in this exact structure:
-
-{
-  "overview": "short overview",
-  "pages": ["page 1", "page 2"],
-  "dataModels": ["model 1", "model 2"],
-  "nextSteps": "short next steps"
-}
+${appIdea}
 `;
 
-    const response = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
-      max_tokens: 700,
-    });
-
-    const rawText = response.choices[0].message.content;
-    const blueprint = extractJson(rawText);
-
-    // --------------------------------------------------
-    // UPDATE USAGE (after successful AI call)
-    // --------------------------------------------------
-    if (usage) {
-      await supabase
-        .from("ai_usage")
-        .update({
-          count: usage.count + 1,
-          last_request_at: new Date().toISOString(),
-        })
-        .eq("id", usage.id);
-    } else {
-      await supabase.from("ai_usage").insert([
+      messages: [
         {
-          user_id,
-          usage_date: today,
-          count: 1,
-          last_request_at: new Date().toISOString(),
+          role: "user",
+          content: prompt,
         },
-      ]);
-    }
-
-    return res.status(200).json({
-      success: true,
-      blueprint,
+      ],
     });
-  } catch (err) {
-    console.error("AI generation error:", err);
+
+    const blueprint = completion.choices[0].message.content;
+
+    // Save blueprint to Supabase
+    await supabase.from("blueprints").insert({
+      project_id: projectId,
+      content: blueprint,
+    });
+
+    return res.status(200).json({ blueprint });
+  } catch (error) {
+    console.error("Blueprint generation error:", error);
     return res.status(500).json({
-      error: "AI generation failed",
+      error: "Something went wrong while generating the blueprint",
     });
   }
 }
