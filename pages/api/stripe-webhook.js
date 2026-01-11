@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export const config = {
   api: {
-    bodyParser: false, // 🚨 REQUIRED
+    bodyParser: false,
   },
 };
 
@@ -21,60 +21,61 @@ export default async function handler(req, res) {
   }
 
   const sig = req.headers["stripe-signature"];
-
   let event;
 
   try {
     const rawBody = await buffer(req);
-
     event = stripe.webhooks.constructEvent(
       rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("❌ Webhook signature verification failed:", err.message);
+    console.error("Webhook signature error:", err.message);
     return res.status(400).json({ error: err.message });
   }
 
   try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object;
+    // Handle successful checkout
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
 
-        await supabase
-          .from("subscriptions")
-          .upsert({
-            user_id: session.metadata.user_id,
-            stripe_customer_id: session.customer,
-            stripe_subscription_id: session.subscription,
-            status: "active",
-          });
+      const userId = session.metadata?.user_id;
 
-        break;
+      if (!userId) {
+        console.warn("No user_id in metadata");
+        return res.status(200).json({ received: true });
       }
 
-      case "customer.subscription.created":
-      case "customer.subscription.updated": {
-        const subscription = event.data.object;
+      await supabase.from("subscriptions").upsert({
+        user_id: userId,
+        stripe_customer_id: session.customer,
+        stripe_subscription_id: session.subscription,
+        plan: "pro",
+        status: "active",
+        updated_at: new Date().toISOString(),
+      });
+    }
 
-        await supabase
-          .from("subscriptions")
-          .update({
-            status: subscription.status,
-          })
-          .eq("stripe_subscription_id", subscription.id);
+    // Handle subscription updates
+    if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated"
+    ) {
+      const subscription = event.data.object;
 
-        break;
-      }
-
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
+      await supabase
+        .from("subscriptions")
+        .update({
+          status: subscription.status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("stripe_subscription_id", subscription.id);
     }
 
     return res.status(200).json({ received: true });
-  } catch (dbError) {
-    console.error("❌ Database update failed:", dbError);
-    return res.status(500).json({ error: "Database update failed" });
+  } catch (err) {
+    console.error("Webhook DB error:", err);
+    return res.status(500).json({ error: "Webhook failed" });
   }
 }
