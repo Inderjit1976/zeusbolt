@@ -14,14 +14,12 @@ export default async function handler(req, res) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-
       line_items: [
         {
           price: "price_1So5HCQYwmMPeFokR9rSF68E",
           quantity: 1,
         },
       ],
-
       success_url:
         "https://zeusbolt.vercel.app/dashboard?payment=success",
       cancel_url:
@@ -29,10 +27,16 @@ export default async function handler(req, res) {
     });
 
     return res.status(200).json({ url: session.url });
-  } catch (err) {
-    console.error("Stripe checkout error:", err);
+  } catch (error) {
+    // 👇 THIS IS THE KEY PART
+    console.error("STRIPE ERROR FULL OBJECT:", error);
+
     return res.status(500).json({
-      error: "Unable to create checkout session",
+      error: "Stripe error",
+      message: error.message,
+      type: error.type,
+      code: error.code,
     });
   }
 }
+
