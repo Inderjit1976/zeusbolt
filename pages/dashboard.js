@@ -1,3 +1,4 @@
+// Dashboard UX polish
 "use client";
 
 import { useEffect, useState } from "react";
