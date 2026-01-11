@@ -16,15 +16,13 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).end("Method Not Allowed");
-  }
-
   const sig = req.headers["stripe-signature"];
+
   let event;
 
   try {
     const rawBody = await buffer(req);
+
     event = stripe.webhooks.constructEvent(
       rawBody,
       sig,
@@ -32,50 +30,48 @@ export default async function handler(req, res) {
     );
   } catch (err) {
     console.error("Webhook signature error:", err.message);
-    return res.status(400).json({ error: err.message });
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
-    // Handle successful checkout
+    // ✅ Checkout completed → activate Pro
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
       const userId = session.metadata?.user_id;
 
       if (!userId) {
-        console.warn("No user_id in metadata");
-        return res.status(200).json({ received: true });
+        throw new Error("Missing user_id in session metadata");
       }
 
-      await supabase.from("subscriptions").upsert({
-        user_id: userId,
-        stripe_customer_id: session.customer,
-        stripe_subscription_id: session.subscription,
-        plan: "pro",
-        status: "active",
-        updated_at: new Date().toISOString(),
-      });
+      const { error } = await supabase
+        .from("subscriptions")
+        .upsert({
+          user_id: userId,
+          plan: "pro",
+          status: "active",
+          stripe_subscription_id: session.subscription,
+        });
+
+      if (error) throw error;
     }
 
-    // Handle subscription updates
-    if (
-      event.type === "customer.subscription.created" ||
-      event.type === "customer.subscription.updated"
-    ) {
+    // ✅ Subscription updated → keep status in sync
+    if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object;
 
       await supabase
         .from("subscriptions")
         .update({
           status: subscription.status,
-          updated_at: new Date().toISOString(),
         })
         .eq("stripe_subscription_id", subscription.id);
     }
 
     return res.status(200).json({ received: true });
   } catch (err) {
-    console.error("Webhook DB error:", err);
-    return res.status(500).json({ error: "Webhook failed" });
+    console.error("Webhook handling error:", err.message);
+    return res.status(500).json({ error: "Database update failed" });
   }
 }
+
