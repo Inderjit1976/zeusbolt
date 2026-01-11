@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "@supabase/supabase-js";
 
+// Create Supabase client (frontend / anon)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -12,10 +13,11 @@ const supabase = createClient(
 export default function Dashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState("");
+  const [isPro, setIsPro] = useState(false);
 
+  // Check login + subscription status
   useEffect(() => {
-    async function checkSession() {
+    const checkUser = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -25,86 +27,102 @@ export default function Dashboard() {
         return;
       }
 
-      setUserEmail(session.user.email);
-      setLoading(false);
-    }
+      // Check subscription status
+      const { data: subscription } = await supabase
+        .from("subscriptions")
+        .select("status, plan")
+        .eq("user_id", session.user.id)
+        .single();
 
-    checkSession();
+      if (subscription?.status === "active" && subscription?.plan === "pro") {
+        setIsPro(true);
+      }
+
+      setLoading(false);
+    };
+
+    checkUser();
   }, [router]);
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace("/auth");
-  }
+  // Start Stripe checkout
+  const handleUpgrade = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  async function handleUpgrade() {
+    if (!session) {
+      alert("You must be logged in");
+      return;
+    }
+
     const res = await fetch("/api/create-checkout-session", {
       method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     });
 
     const data = await res.json();
 
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
+    if (!data.url) {
       alert("Unable to start checkout. Please try again.");
+      return;
     }
-  }
+
+    window.location.href = data.url;
+  };
+
+  // Logout
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/auth");
+  };
 
   if (loading) {
-    return <p style={{ padding: 40 }}>Loading dashboard…</p>;
+    return <p style={{ padding: 40 }}>Checking login…</p>;
   }
 
   return (
-    <div style={{ padding: 40, maxWidth: 900, margin: "0 auto" }}>
+    <div style={{ padding: 40 }}>
       <h1>Welcome to ZeusBolt ⚡</h1>
-      <p style={{ color: "#555" }}>
-        Logged in as <strong>{userEmail}</strong>
-      </p>
 
-      {/* UPGRADE BUTTON */}
-      <div style={{ marginTop: 20 }}>
-        <button
-          onClick={handleUpgrade}
-          style={{
-            padding: "12px 18px",
-            fontSize: 16,
-            cursor: "pointer",
-            backgroundColor: "#000",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-          }}
-        >
-          Upgrade to Pro 🚀
-        </button>
-      </div>
+      {isPro ? (
+        <>
+          <p style={{ color: "green", fontWeight: "bold" }}>
+            You are a Pro user 🚀
+          </p>
+          <p>Pro limits are unlocked.</p>
+        </>
+      ) : (
+        <>
+          <p>You are on the Free plan.</p>
 
-      {/* DASHBOARD ACTIONS */}
-      <div style={{ marginTop: 40 }}>
-        <button
-          onClick={() => router.push("/projects/new")}
-          style={{
-            padding: "10px 16px",
-            fontSize: 16,
-            cursor: "pointer",
-            marginRight: 12,
-          }}
-        >
-          Create New Project
-        </button>
+          <button
+            onClick={handleUpgrade}
+            style={{
+              marginTop: 20,
+              padding: "10px 16px",
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            Upgrade to Pro 🚀
+          </button>
+        </>
+      )}
 
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: "10px 16px",
-            fontSize: 16,
-            cursor: "pointer",
-          }}
-        >
-          Log out
-        </button>
-      </div>
+      <hr style={{ margin: "40px 0" }} />
+
+      <button
+        onClick={handleLogout}
+        style={{
+          padding: "8px 14px",
+          fontSize: 14,
+          cursor: "pointer",
+        }}
+      >
+        Log out
+      </button>
     </div>
   );
 }
