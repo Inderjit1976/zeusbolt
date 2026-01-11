@@ -1,11 +1,9 @@
-// Dashboard UX polish
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "@supabase/supabase-js";
 
-// Frontend Supabase client (anon key only)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -18,7 +16,6 @@ export default function Dashboard() {
   const [isPro, setIsPro] = useState(false);
   const [error, setError] = useState("");
 
-  // Load user + subscription
   useEffect(() => {
     const loadDashboard = async () => {
       const {
@@ -48,7 +45,6 @@ export default function Dashboard() {
     loadDashboard();
   }, [router]);
 
-  // Start Stripe checkout (Free users only)
   const handleUpgrade = async () => {
     setError("");
 
@@ -64,12 +60,11 @@ export default function Dashboard() {
       }
 
       window.location.href = data.url;
-    } catch (err) {
+    } catch {
       setError("Unable to start checkout. Please try again.");
     }
   };
 
-  // Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/auth");
@@ -100,4 +95,34 @@ export default function Dashboard() {
             ✅ Pro plan active
           </p>
           <p style={{ marginTop: 6 }}>
-            You have
+            You have full access to ZeusBolt features.
+          </p>
+        </div>
+      ) : (
+        <div style={{ marginTop: 20 }}>
+          <p>You are currently on the Free plan.</p>
+
+          <button
+            onClick={handleUpgrade}
+            style={{
+              marginTop: 12,
+              padding: "12px 20px",
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            Upgrade to Pro 🚀
+          </button>
+
+          {error && (
+            <p style={{ color: "red", marginTop: 10 }}>{error}</p>
+          )}
+        </div>
+      )}
+
+      <hr style={{ margin: "40px 0" }} />
+
+      <button onClick={handleLogout}>Log out</button>
+    </div>
+  );
+}
