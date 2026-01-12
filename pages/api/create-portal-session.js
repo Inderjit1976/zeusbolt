@@ -1,12 +1,7 @@
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { createServerSupabaseClient } from "@supabase/auth-helpers-nextjs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -14,37 +9,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1️⃣ Get logged-in user from Supabase auth cookie
-    const { data: authData, error: authError } =
-      await supabase.auth.getUser(req.headers.authorization?.replace("Bearer ", ""));
+    // 1️⃣ Create Supabase server client using cookies
+    const supabase = createServerSupabaseClient({ req, res });
 
-    if (authError || !authData?.user) {
+    // 2️⃣ Get authenticated user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const userId = authData.user.id;
-
-    // 2️⃣ Fetch ACTIVE subscription for user
-    const { data: subscription, error: subError } = await supabase
+    // 3️⃣ Fetch ACTIVE subscription
+    const { data: subscription, error } = await supabase
       .from("subscriptions")
       .select("stripe_customer_id")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
 
-    if (subError || !subscription?.stripe_customer_id) {
+    if (error || !subscription?.stripe_customer_id) {
       return res.status(400).json({ error: "No active subscription found" });
     }
 
-    // 3️⃣ Create Stripe Billing Portal session
+    // 4️⃣ Create Stripe Billing Portal session
     const session = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
       return_url: "https://zeusbolt.vercel.app/dashboard",
     });
 
     return res.status(200).json({ url: session.url });
-  } catch (error) {
-    console.error("Stripe Billing Portal Error:", error);
-    return res.status(500).json({ error: "Failed to create portal session" });
+  } catch (err) {
+    console.error("Stripe portal error:", err);
+    return res.status(500).json({ error: "Failed to create billing portal session" });
   }
 }
