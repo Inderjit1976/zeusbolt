@@ -12,25 +12,45 @@ export default function Dashboard() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setUser(data.user);
-        loadSubscription(data.user.id);
-      }
-    });
+    const loadData = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      setUser(user);
+
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      setSubscription(data);
+    };
+
+    loadData();
   }, []);
 
-  async function loadSubscription(userId) {
-    const { data } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+  const startCheckout = async () => {
+    setError("");
+    try {
+      const res = await fetch("/api/create-checkout-session", {
+        method: "POST",
+      });
 
-    setSubscription(data);
-  }
+      const data = await res.json();
 
-  async function openBillingPortal() {
+      if (!data.url) throw new Error("No checkout URL");
+
+      window.location.href = data.url;
+    } catch (err) {
+      setError("Unable to start checkout");
+    }
+  };
+
+  const openBillingPortal = async () => {
     setError("");
     try {
       const res = await fetch("/api/create-portal-session", {
@@ -41,20 +61,17 @@ export default function Dashboard() {
 
       const data = await res.json();
 
-      if (!data.url) {
-        throw new Error();
-      }
+      if (!data.url) throw new Error("No portal URL");
 
       window.location.href = data.url;
-    } catch {
-      setError("Unable to open billing portal.");
+    } catch (err) {
+      setError("Unable to open billing portal");
     }
-  }
+  };
 
-  if (!user) return null;
+  if (!user) return <p>Loading...</p>;
 
-  const isPro =
-    subscription?.plan === "pro" && subscription?.status === "active";
+  const isPro = subscription?.plan === "pro" && subscription?.status === "active";
 
   return (
     <div style={{ padding: 40 }}>
@@ -63,16 +80,21 @@ export default function Dashboard() {
 
       {isPro ? (
         <div style={{ background: "#eaffea", padding: 20, marginTop: 20 }}>
-          <p>✅ <strong>Pro plan active</strong></p>
+          <p>✅ Pro plan active</p>
           <button onClick={openBillingPortal}>Manage Billing</button>
-          {error && <p style={{ color: "red" }}>{error}</p>}
         </div>
       ) : (
-        <p>Free plan</p>
+        <div style={{ background: "#fff4e5", padding: 20, marginTop: 20 }}>
+          <p>Free plan</p>
+          <button onClick={startCheckout}>Upgrade to Pro</button>
+        </div>
       )}
 
-      <hr />
-      <button onClick={() => supabase.auth.signOut()}>Log out</button>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
+      <button style={{ marginTop: 40 }} onClick={() => supabase.auth.signOut()}>
+        Log out
+      </button>
     </div>
   );
 }
