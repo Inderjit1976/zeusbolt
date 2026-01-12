@@ -11,16 +11,31 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
     const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      data: { subscription: authSub },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const { data, error } = await supabase
+          .from("subscriptions")
+          .select("plan, status")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (!error) {
+          setSubscription(data);
+        }
+      }
+
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => authSub.unsubscribe();
   }, []);
 
   async function handleLogin(e) {
@@ -54,7 +69,23 @@ export default function Dashboard() {
           <p>
             Logged in as: <strong>{user.email}</strong>
           </p>
-          <p>Auth is working ✅</p>
+
+          <h3>Subscription</h3>
+
+          {subscription ? (
+            <ul>
+              <li>
+                <strong>Plan:</strong>{" "}
+                {subscription.plan || "free"}
+              </li>
+              <li>
+                <strong>Status:</strong>{" "}
+                {subscription.status || "none"}
+              </li>
+            </ul>
+          ) : (
+            <p>No subscription row found (free user)</p>
+          )}
         </>
       ) : (
         <>
