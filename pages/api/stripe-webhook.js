@@ -8,15 +8,16 @@ export const config = {
   },
 };
 
-// 🔑 Pin Stripe API version (important for Vercel)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
 
-// Server-side Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: { persistSession: false },
+  }
 );
 
 export default async function handler(req, res) {
@@ -31,12 +32,11 @@ export default async function handler(req, res) {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("❌ Webhook signature verification failed:", err.message);
+    console.error("❌ Webhook signature failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
-    // ✅ Checkout completed → activate Pro
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
@@ -45,43 +45,29 @@ export default async function handler(req, res) {
         throw new Error("Missing supabase_user_id in metadata");
       }
 
-      await supabase.from("subscriptions").upsert({
+      const payload = {
         user_id: userId,
         plan: "pro",
         status: "active",
         stripe_customer_id: session.customer,
         stripe_subscription_id: session.subscription,
-      });
-    }
+      };
 
-    // ✅ Subscription status updated
-    if (event.type === "customer.subscription.updated") {
-      const subscription = event.data.object;
-
-      await supabase
+      const { data, error } = await supabase
         .from("subscriptions")
-        .update({
-          status: subscription.status,
-        })
-        .eq("stripe_subscription_id", subscription.id);
-    }
+        .upsert(payload, { onConflict: "user_id" });
 
-    // ❌ Subscription cancelled → downgrade
-    if (event.type === "customer.subscription.deleted") {
-      const subscription = event.data.object;
+      if (error) {
+        console.error("❌ SUPABASE UPSERT ERROR:", error);
+        throw error;
+      }
 
-      await supabase
-        .from("subscriptions")
-        .update({
-          status: "inactive",
-          plan: "free",
-        })
-        .eq("stripe_subscription_id", subscription.id);
+      console.log("✅ Subscription updated:", data);
     }
 
     return res.status(200).json({ received: true });
   } catch (err) {
-    console.error("❌ Webhook processing error:", err);
+    console.error("❌ WEBHOOK PROCESSING FAILED:", err);
     return res.status(500).json({ error: "Webhook processing failed" });
   }
 }
