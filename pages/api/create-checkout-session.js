@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// Server-side Supabase (service role)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -18,21 +19,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("STRIPE_SECRET_KEY missing");
+    const { supabaseUserId } = req.body;
+
+    if (!supabaseUserId) {
+      return res.status(400).json({ error: "Missing supabaseUserId" });
     }
 
-    // 1️⃣ Get logged-in user from Supabase auth cookie
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(req.headers.authorization);
+    // (Optional safety check) confirm user exists
+    const { data: userExists } = await supabase
+      .from("auth.users")
+      .select("id")
+      .eq("id", supabaseUserId)
+      .single();
 
-    if (authError || !user) {
-      return res.status(401).json({ error: "Not authenticated" });
+    if (!userExists) {
+      return res.status(401).json({ error: "Invalid user" });
     }
 
-    // 2️⃣ Create Stripe Checkout Session
+    // Create Stripe Checkout session
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -44,23 +48,9 @@ export default async function handler(req, res) {
         },
       ],
 
-      // 🔑 CRITICAL: attach Supabase user id
+      // 🔑 CRITICAL: link Stripe to Supabase user
       metadata: {
-        supabase_user_id: user.id,
+        supabase_user_id: supabaseUserId,
       },
 
       success_url:
-        "https://zeusbolt.vercel.app/dashboard?payment=success",
-      cancel_url:
-        "https://zeusbolt.vercel.app/dashboard?payment=cancel",
-    });
-
-    return res.status(200).json({ url: session.url });
-  } catch (err) {
-    console.error("Stripe Checkout Error:", err);
-    return res.status(500).json({
-      error: "Checkout session failed",
-      message: err.message,
-    });
-  }
-}
