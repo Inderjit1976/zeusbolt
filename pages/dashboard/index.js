@@ -68,18 +68,31 @@ export default function Dashboard() {
           <h3>Subscription</h3>
 
           {subscription ? (
-            <ul>
-              <li>
-                <strong>Plan:</strong> {subscription.plan || "free"}
-              </li>
-              <li>
-                <strong>Status:</strong> {subscription.status || "none"}
-              </li>
-              <li>
-                <strong>Stripe customer:</strong>{" "}
-                {subscription.stripe_customer_id || "(not created yet)"}
-              </li>
-            </ul>
+            <>
+              <ul>
+                <li>
+                  <strong>Plan:</strong> {subscription.plan || "free"}
+                </li>
+                <li>
+                  <strong>Status:</strong> {subscription.status || "none"}
+                </li>
+                <li>
+                  <strong>Stripe customer:</strong>{" "}
+                  {subscription.stripe_customer_id || "(not created yet)"}
+                </li>
+              </ul>
+
+              {subscription.plan !== "pro" && (
+                <form
+                  action="/api/create-checkout-session"
+                  method="POST"
+                >
+                  <button style={{ marginTop: 12 }}>
+                    Upgrade to Pro
+                  </button>
+                </form>
+              )}
+            </>
           ) : (
             <p>No subscription row found (free user)</p>
           )}
@@ -90,4 +103,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
