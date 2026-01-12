@@ -14,6 +14,31 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
+    // ✅ 1. Get current session immediately
+    async function loadSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const { data } = await supabase
+          .from("subscriptions")
+          .select("plan, status")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        setSubscription(data);
+      }
+
+      setLoading(false);
+    }
+
+    loadSession();
+
+    // ✅ 2. Listen for future auth changes
     const {
       data: { subscription: authSub },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -21,18 +46,16 @@ export default function Dashboard() {
       setUser(currentUser);
 
       if (currentUser) {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("subscriptions")
           .select("plan, status")
           .eq("user_id", currentUser.id)
           .maybeSingle();
 
-        if (!error) {
-          setSubscription(data);
-        }
+        setSubscription(data);
+      } else {
+        setSubscription(null);
       }
-
-      setLoading(false);
     });
 
     return () => authSub.unsubscribe();
@@ -75,12 +98,10 @@ export default function Dashboard() {
           {subscription ? (
             <ul>
               <li>
-                <strong>Plan:</strong>{" "}
-                {subscription.plan || "free"}
+                <strong>Plan:</strong> {subscription.plan || "free"}
               </li>
               <li>
-                <strong>Status:</strong>{" "}
-                {subscription.status || "none"}
+                <strong>Status:</strong> {subscription.status || "none"}
               </li>
             </ul>
           ) : (
