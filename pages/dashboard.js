@@ -11,41 +11,28 @@ export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
-
-        if (error) throw error;
-
-        if (!user) {
-          router.push("/login");
-          return;
-        }
-
-        setUser(user);
-      } catch (err) {
-        console.error("Dashboard auth error:", err);
-        setError("Failed to load user");
-      } finally {
-        setLoading(false);
+    // ✅ Correct way for browser-based auth
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        router.push("/login");
+        return;
       }
-    }
 
-    loadUser();
+      setUser(session.user);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   if (loading) {
     return <p style={{ padding: 20 }}>Loading dashboard…</p>;
-  }
-
-  if (error) {
-    return <p style={{ padding: 20, color: "red" }}>{error}</p>;
   }
 
   return (
@@ -59,8 +46,8 @@ export default function Dashboard() {
       <hr />
 
       <button
-        onClick={async () => {
-          alert("Dashboard loaded correctly 🎉");
+        onClick={() => {
+          alert("Dashboard auth works 🎉");
         }}
       >
         Test Button
