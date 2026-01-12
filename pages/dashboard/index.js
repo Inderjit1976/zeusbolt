@@ -1,129 +1,152 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+function withTimeout(promise, ms, label = "Operation") {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+}
 
 export default function Dashboard() {
-  const [user, setUser] = useState(null);
+  const [phase, setPhase] = useState("BOOT");
+  const [details, setDetails] = useState("");
+  const [userEmail, setUserEmail] = useState(null);
   const [subscription, setSubscription] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+  const [done, setDone] = useState(false);
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  const supabase = useMemo(() => {
+    if (!supabaseUrl || !supabaseAnon) return null;
+    return createClient(supabaseUrl, supabaseAnon);
+  }, [supabaseUrl, supabaseAnon]);
 
   useEffect(() => {
-    async function init() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    let cancelled = false;
 
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+    async function run() {
+      try {
+        setPhase("CHECK_ENV");
+        setDetails("Checking NEXT_PUBLIC_SUPABASE_* variables…");
 
-      if (currentUser) {
-        const { data } = await supabase
-          .from("subscriptions")
-          .select("plan, status")
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
+        if (!supabaseUrl || !supabaseAnon) {
+          setPhase("ENV_MISSING");
+          setDetails("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY at runtime.");
+          return;
+        }
 
-        setSubscription(data);
+        if (!supabase) {
+          setPhase("CLIENT_FAIL");
+          setDetails("Supabase client failed to initialize.");
+          return;
+        }
+
+        setPhase("GET_SESSION");
+        setDetails("Fetching session from Supabase (max 8s)…");
+
+        const sessionResp = await withTimeout(
+          supabase.auth.getSession(),
+          8000,
+          "getSession()"
+        );
+
+        if (cancelled) return;
+
+        const session = sessionResp?.data?.session ?? null;
+        const email = session?.user?.email ?? null;
+
+        if (!email) {
+          setPhase("NO_SESSION");
+          setDetails("No session found. You are logged out (this is OK).");
+          return;
+        }
+
+        setUserEmail(email);
+        setPhase("SESSION_OK");
+        setDetails(`Session loaded for ${email}`);
+
+        setPhase("FETCH_SUB");
+        setDetails("Loading subscription row from Supabase (max 8s)…");
+
+        const subResp = await withTimeout(
+          supabase
+            .from("subscriptions")
+            .select("plan, status, stripe_customer_id")
+            .eq("user_id", session.user.id)
+            .maybeSingle(),
+          8000,
+          "subscriptions query"
+        );
+
+        if (cancelled) return;
+
+        if (subResp?.error) {
+          setPhase("SUB_ERROR");
+          setDetails(`Supabase query error: ${subResp.error.message}`);
+          return;
+        }
+
+        setSubscription(subResp?.data ?? null);
+        setPhase("DONE");
+        setDetails("Dashboard loaded successfully.");
+      } catch (err) {
+        if (cancelled) return;
+        setPhase("ERROR");
+        setDetails(err?.message || String(err));
+      } finally {
+        if (!cancelled) setDone(true);
       }
-
-      setLoading(false);
     }
 
-    init();
+    run();
 
-    const {
-      data: { subscription: authSub },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        const { data } = await supabase
-          .from("subscriptions")
-          .select("plan, status")
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-
-        setSubscription(data);
-      } else {
-        setSubscription(null);
-      }
-    });
-
-    return () => authSub.unsubscribe();
-  }, []);
-
-  async function handleLogin(e) {
-    e.preventDefault();
-    setMessage("Sending magic link…");
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: "https://zeusbolt.vercel.app/dashboard",
-      },
-    });
-
-    if (error) {
-      setMessage("Error sending login email");
-    } else {
-      setMessage("Check your email for the login link 📧");
-    }
-  }
-
-  if (loading) {
-    return <p style={{ padding: 20 }}>Loading dashboard…</p>;
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, supabaseUrl, supabaseAnon]);
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 20, fontFamily: "system-ui, Arial" }}>
       <h1>ZeusBolt Dashboard</h1>
 
-      {user ? (
-        <>
+      <div style={{ padding: 12, border: "1px solid #ddd", borderRadius: 8, marginTop: 12 }}>
+        <div style={{ fontWeight: 700 }}>Status</div>
+        <div style={{ marginTop: 6 }}>
+          <div><strong>Phase:</strong> {phase}</div>
+          <div><strong>Details:</strong> {details}</div>
+          <div><strong>Done:</strong> {done ? "YES" : "NO"}</div>
+        </div>
+      </div>
+
+      {userEmail && (
+        <div style={{ marginTop: 16 }}>
           <p>
-            Logged in as: <strong>{user.email}</strong>
+            Logged in as: <strong>{userEmail}</strong>
           </p>
 
           <h3>Subscription</h3>
-
           {subscription ? (
             <ul>
-              <li>
-                <strong>Plan:</strong> {subscription.plan || "free"}
-              </li>
-              <li>
-                <strong>Status:</strong> {subscription.status || "none"}
-              </li>
+              <li><strong>Plan:</strong> {subscription.plan || "free"}</li>
+              <li><strong>Status:</strong> {subscription.status || "none"}</li>
+              <li><strong>stripe_customer_id:</strong> {subscription.stripe_customer_id || "(empty)"}</li>
             </ul>
           ) : (
-            <p>No subscription row found (free user)</p>
+            <p>No subscription row found for this user (free user is fine).</p>
           )}
-        </>
-      ) : (
-        <>
-          <p>No user logged in</p>
+        </div>
+      )}
 
-          <form onSubmit={handleLogin}>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{ padding: 8, marginRight: 8 }}
-            />
-            <button type="submit">Log in</button>
-          </form>
-
-          {message && <p>{message}</p>}
-        </>
+      {!userEmail && done && (
+        <div style={{ marginTop: 16 }}>
+          <p>You are logged out. (That’s fine for now.)</p>
+          <p>
+            If you want login back on this screen, tell me and I’ll add it in one step.
+          </p>
+        </div>
       )}
     </div>
   );
