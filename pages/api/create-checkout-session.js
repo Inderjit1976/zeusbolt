@@ -3,15 +3,8 @@ export const config = {
 };
 
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-// Server-side Supabase (service role)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -25,18 +18,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing supabaseUserId" });
     }
 
-    // (Optional safety check) confirm user exists
-    const { data: userExists } = await supabase
-      .from("auth.users")
-      .select("id")
-      .eq("id", supabaseUserId)
-      .single();
-
-    if (!userExists) {
-      return res.status(401).json({ error: "Invalid user" });
-    }
-
-    // Create Stripe Checkout session
+    // ✅ Create Stripe Checkout session
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -48,7 +30,7 @@ export default async function handler(req, res) {
         },
       ],
 
-      // 🔑 CRITICAL: link Stripe to Supabase user
+      // 🔑 This is the ONLY link we need
       metadata: {
         supabase_user_id: supabaseUserId,
       },
