@@ -17,7 +17,13 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function loadDashboard() {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
+      // 1️⃣ Get logged-in user
       const { data } = await supabase.auth.getSession();
       const session = data?.session ?? null;
 
@@ -28,40 +34,30 @@ export default function Dashboard() {
 
       setUser(session.user);
 
-      const subResp = await supabase
+      // 2️⃣ Get ACTIVE subscription only (important)
+      const { data: subData, error } = await supabase
         .from("subscriptions")
         .select("plan, status, stripe_customer_id")
         .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (!cancelled) {
-        setSubscription(subResp?.data ?? null);
+        if (error) {
+          console.error("Subscription fetch error:", error);
+        }
+        setSubscription(subData ?? null);
         setLoading(false);
       }
     }
 
-    load();
+    loadDashboard();
     return () => {
       cancelled = true;
     };
   }, [supabase]);
-
-  async function handleUpgrade() {
-    const res = await fetch("/api/create-checkout-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        supabaseUserId: user.id,
-      }),
-    });
-
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      alert("Checkout failed");
-    }
-  }
 
   if (loading) {
     return <p style={{ padding: 20 }}>Loading dashboard…</p>;
@@ -79,29 +75,34 @@ export default function Dashboard() {
 
           <h3>Subscription</h3>
 
-          {subscription ? (
+          {subscription && subscription.plan === "pro" ? (
+            <ul>
+              <li>
+                <strong>Plan:</strong> Pro
+              </li>
+              <li>
+                <strong>Status:</strong> Active
+              </li>
+              <li>
+                <strong>Stripe customer:</strong>{" "}
+                {subscription.stripe_customer_id}
+              </li>
+            </ul>
+          ) : (
             <>
-              <ul>
-                <li>
-                  <strong>Plan:</strong> {subscription.plan || "free"}
-                </li>
-                <li>
-                  <strong>Status:</strong> {subscription.status || "none"}
-                </li>
-                <li>
-                  <strong>Stripe customer:</strong>{" "}
-                  {subscription.stripe_customer_id || "(not created yet)"}
-                </li>
-              </ul>
+              <p>
+                <strong>Plan:</strong> Free
+              </p>
+              <p>
+                <strong>Status:</strong> Inactive
+              </p>
 
-              {subscription.plan !== "pro" && (
-                <button onClick={handleUpgrade}>
+              <form action="/api/create-checkout-session" method="POST">
+                <button style={{ marginTop: 12 }}>
                   Upgrade to Pro
                 </button>
-              )}
+              </form>
             </>
-          ) : (
-            <button onClick={handleUpgrade}>Upgrade to Pro</button>
           )}
         </>
       ) : (
