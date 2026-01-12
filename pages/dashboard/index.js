@@ -80,12 +80,9 @@ export default function Dashboard() {
   }
 
   if (loading) {
-  return (
-    <p style={{ padding: 20, color: "red" }}>
-      LOADING DASHBOARD — VERSION 2026-01-12
-    </p>
-  );
+  return <p style={{ padding: 20 }}>Loading dashboard…</p>;
 }
+
 
 
   return (
