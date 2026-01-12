@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/router";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -7,93 +8,62 @@ const supabase = createClient(
 );
 
 export default function Dashboard() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
-  const [subscription, setSubscription] = useState(null);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    async function loadUser() {
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
 
-      if (!user) return;
+        if (error) throw error;
 
-      setUser(user);
+        if (!user) {
+          router.push("/login");
+          return;
+        }
 
-      const { data } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      setSubscription(data);
-    };
-
-    loadData();
-  }, []);
-
-  const startCheckout = async () => {
-    setError("");
-    try {
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-      });
-
-      const data = await res.json();
-
-      if (!data.url) throw new Error("No checkout URL");
-
-      window.location.href = data.url;
-    } catch (err) {
-      setError("Unable to start checkout");
+        setUser(user);
+      } catch (err) {
+        console.error("Dashboard auth error:", err);
+        setError("Failed to load user");
+      } finally {
+        setLoading(false);
+      }
     }
-  };
 
-  const openBillingPortal = async () => {
-    setError("");
-    try {
-      const res = await fetch("/api/create-portal-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id }),
-      });
+    loadUser();
+  }, [router]);
 
-      const data = await res.json();
+  if (loading) {
+    return <p style={{ padding: 20 }}>Loading dashboard…</p>;
+  }
 
-      if (!data.url) throw new Error("No portal URL");
-
-      window.location.href = data.url;
-    } catch (err) {
-      setError("Unable to open billing portal");
-    }
-  };
-
-  if (!user) return <p>Loading...</p>;
-
-  const isPro = subscription?.plan === "pro" && subscription?.status === "active";
+  if (error) {
+    return <p style={{ padding: 20, color: "red" }}>{error}</p>;
+  }
 
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Welcome to ZeusBolt ⚡</h1>
-      <p>Logged in as {user.email}</p>
+    <div style={{ padding: 20 }}>
+      <h1>ZeusBolt Dashboard</h1>
 
-      {isPro ? (
-        <div style={{ background: "#eaffea", padding: 20, marginTop: 20 }}>
-          <p>✅ Pro plan active</p>
-          <button onClick={openBillingPortal}>Manage Billing</button>
-        </div>
-      ) : (
-        <div style={{ background: "#fff4e5", padding: 20, marginTop: 20 }}>
-          <p>Free plan</p>
-          <button onClick={startCheckout}>Upgrade to Pro</button>
-        </div>
-      )}
+      <p>
+        Logged in as: <strong>{user.email}</strong>
+      </p>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      <hr />
 
-      <button style={{ marginTop: 40 }} onClick={() => supabase.auth.signOut()}>
-        Log out
+      <button
+        onClick={async () => {
+          alert("Dashboard loaded correctly 🎉");
+        }}
+      >
+        Test Button
       </button>
     </div>
   );
