@@ -23,7 +23,6 @@ export default function Dashboard() {
         return;
       }
 
-      // 1️⃣ Get logged-in user
       const { data } = await supabase.auth.getSession();
       const session = data?.session ?? null;
 
@@ -34,10 +33,9 @@ export default function Dashboard() {
 
       setUser(session.user);
 
-      // 2️⃣ Get ACTIVE subscription only (important)
-      const { data: subData, error } = await supabase
+      const { data: subData } = await supabase
         .from("subscriptions")
-        .select("plan, status, stripe_customer_id")
+        .select("plan, status")
         .eq("user_id", session.user.id)
         .eq("status", "active")
         .order("created_at", { ascending: false })
@@ -45,9 +43,6 @@ export default function Dashboard() {
         .maybeSingle();
 
       if (!cancelled) {
-        if (error) {
-          console.error("Subscription fetch error:", error);
-        }
         setSubscription(subData ?? null);
         setLoading(false);
       }
@@ -76,18 +71,20 @@ export default function Dashboard() {
           <h3>Subscription</h3>
 
           {subscription && subscription.plan === "pro" ? (
-            <ul>
-              <li>
+            <>
+              <p>
                 <strong>Plan:</strong> Pro
-              </li>
-              <li>
-                <strong>Status:</strong> Active
-              </li>
-              <li>
-                <strong>Stripe customer:</strong>{" "}
-                {subscription.stripe_customer_id}
-              </li>
-            </ul>
+              </p>
+              <p>
+                <strong>Billing status:</strong> Active (managed by Stripe)
+              </p>
+
+              <form action="/api/create-portal-session" method="POST">
+                <button style={{ marginTop: 12 }}>
+                  Manage billing
+                </button>
+              </form>
+            </>
           ) : (
             <>
               <p>
