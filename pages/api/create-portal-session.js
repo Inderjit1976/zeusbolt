@@ -5,52 +5,51 @@ export const config = {
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("Missing STRIPE_SECRET_KEY");
     }
 
-    // Fetch Stripe customer ID from Supabase
-    const { data, error } = await supabase
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+    }
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { user_id } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({ error: "Missing user_id" });
+    }
+
+    const { data: subscription, error } = await supabase
       .from("subscriptions")
       .select("stripe_customer_id")
-      .eq("user_id", userId)
+      .eq("user_id", user_id)
       .single();
 
-    if (error || !data || !data.stripe_customer_id) {
-      console.error("Stripe customer lookup failed:", error, data);
-      return res.status(400).json({
-        error: "Stripe customer not found for this user",
-      });
+    if (error || !subscription?.stripe_customer_id) {
+      throw new Error("Stripe customer not found for user");
     }
 
-    // Create Stripe Billing Portal session
     const portalSession = await stripe.billingPortal.sessions.create({
-      customer: data.stripe_customer_id,
+      customer: subscription.stripe_customer_id,
       return_url: "https://zeusbolt.vercel.app/dashboard",
     });
 
-    return res.status(200).json({
-      url: portalSession.url,
-    });
+    return res.status(200).json({ url: portalSession.url });
   } catch (err) {
-    console.error("Billing portal error:", err);
-    return res.status(500).json({
-      error: "Unable to open billing portal",
-    });
+    console.error("Portal error:", err.message);
+    return res.status(500).json({ error: "Unable to open billing portal" });
   }
 }
