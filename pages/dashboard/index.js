@@ -100,3 +100,31 @@ export default function Dashboard() {
               </li>
               <li>
                 <strong>Status:</strong> {subscription.status || "none"}
+              </li>
+            </ul>
+          ) : (
+            <p>No subscription row found (free user)</p>
+          )}
+        </>
+      ) : (
+        <>
+          <p>No user logged in</p>
+
+          <form onSubmit={handleLogin}>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{ padding: 8, marginRight: 8 }}
+            />
+            <button type="submit">Log in</button>
+          </form>
+
+          {message && <p>{message}</p>}
+        </>
+      )}
+    </div>
+  );
+}
