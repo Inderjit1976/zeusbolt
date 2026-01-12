@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { useRouter } from "next/router";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -8,31 +7,37 @@ const supabase = createClient(
 );
 
 export default function Dashboard() {
-  const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ✅ Correct way for browser-based auth
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        router.push("/login");
-        return;
-      }
-
-      setUser(session.user);
+      setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   if (loading) {
     return <p style={{ padding: 20 }}>Loading dashboard…</p>;
+  }
+
+  if (!user) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h1>ZeusBolt Dashboard</h1>
+        <p style={{ color: "red" }}>
+          No user session found. You are not logged in.
+        </p>
+        <p>
+          This is expected during setup. Auth is working, but no login page exists
+          yet.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -47,7 +52,7 @@ export default function Dashboard() {
 
       <button
         onClick={() => {
-          alert("Dashboard auth works 🎉");
+          alert("Dashboard + auth now works 🎉");
         }}
       >
         Test Button
