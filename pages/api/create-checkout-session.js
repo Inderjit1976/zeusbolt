@@ -4,7 +4,11 @@ export const config = {
 
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// 🔑 Explicit API version + timeout (CRITICAL FIX)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+  timeout: 20000,
+});
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -18,10 +22,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing supabaseUserId" });
     }
 
-    // ✅ Create Stripe Checkout session
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      payment_method_types: ["card"],
 
       line_items: [
         {
@@ -30,7 +32,6 @@ export default async function handler(req, res) {
         },
       ],
 
-      // 🔑 This is the ONLY link we need
       metadata: {
         supabase_user_id: supabaseUserId,
       },
@@ -43,7 +44,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error("Stripe Checkout Error:", err);
+    console.error("🔥 STRIPE ERROR TYPE:", err.type);
+    console.error("🔥 STRIPE ERROR MESSAGE:", err.message);
+    console.error("🔥 FULL ERROR:", err);
+
     return res.status(500).json({
       error: "Checkout session failed",
       message: err.message,
