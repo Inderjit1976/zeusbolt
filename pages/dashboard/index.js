@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 export default function Dashboard() {
-  const [userEmail, setUserEmail] = useState(null);
+  const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,11 +18,6 @@ export default function Dashboard() {
     let cancelled = false;
 
     async function load() {
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
-
       const { data } = await supabase.auth.getSession();
       const session = data?.session ?? null;
 
@@ -31,7 +26,7 @@ export default function Dashboard() {
         return;
       }
 
-      setUserEmail(session.user.email);
+      setUser(session.user);
 
       const subResp = await supabase
         .from("subscriptions")
@@ -51,6 +46,23 @@ export default function Dashboard() {
     };
   }, [supabase]);
 
+  async function handleUpgrade() {
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supabaseUserId: user.id,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert("Checkout failed");
+    }
+  }
+
   if (loading) {
     return <p style={{ padding: 20 }}>Loading dashboard…</p>;
   }
@@ -59,10 +71,10 @@ export default function Dashboard() {
     <div style={{ padding: 20 }}>
       <h1>ZeusBolt Dashboard</h1>
 
-      {userEmail ? (
+      {user ? (
         <>
           <p>
-            Logged in as: <strong>{userEmail}</strong>
+            Logged in as: <strong>{user.email}</strong>
           </p>
 
           <h3>Subscription</h3>
@@ -83,18 +95,13 @@ export default function Dashboard() {
               </ul>
 
               {subscription.plan !== "pro" && (
-                <form
-                  action="/api/create-checkout-session"
-                  method="POST"
-                >
-                  <button style={{ marginTop: 12 }}>
-                    Upgrade to Pro
-                  </button>
-                </form>
+                <button onClick={handleUpgrade}>
+                  Upgrade to Pro
+                </button>
               )}
             </>
           ) : (
-            <p>No subscription row found (free user)</p>
+            <button onClick={handleUpgrade}>Upgrade to Pro</button>
           )}
         </>
       ) : (
