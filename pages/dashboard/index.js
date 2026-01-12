@@ -9,6 +9,8 @@ const supabase = createClient(
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const {
@@ -18,10 +20,26 @@ export default function Dashboard() {
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setMessage("Sending magic link…");
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: "https://zeusbolt.vercel.app/dashboard",
+      },
+    });
+
+    if (error) {
+      setMessage("Error sending login email");
+    } else {
+      setMessage("Check your email for the login link 📧");
+    }
+  }
 
   if (loading) {
     return <p style={{ padding: 20 }}>Loading dashboard…</p>;
@@ -41,7 +59,20 @@ export default function Dashboard() {
       ) : (
         <>
           <p style={{ color: "red" }}>No user logged in</p>
-          <p>This is OK for now.</p>
+
+          <form onSubmit={handleLogin}>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{ padding: 8, marginRight: 8 }}
+            />
+            <button type="submit">Log in</button>
+          </form>
+
+          {message && <p>{message}</p>}
         </>
       )}
     </div>
