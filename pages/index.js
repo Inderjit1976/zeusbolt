@@ -61,7 +61,6 @@ export default function HomePage() {
         return;
       }
 
-      // Success → go to dashboard
       router.push("/dashboard");
     } catch (err) {
       setError("Something went wrong. Please try again.");
@@ -74,11 +73,10 @@ export default function HomePage() {
       {/* HERO */}
       <section style={{ marginBottom: 40 }}>
         <h1 style={{ fontSize: 42, fontWeight: 800, marginBottom: 12 }}>
-          Build your next SaaS idea
+          Turn your idea into something real
         </h1>
-        <p style={{ fontSize: 18, color: "#6b7280", maxWidth: 600 }}>
-          ZeusBolt helps you turn ideas into real products — faster and with
-          clarity.
+        <p style={{ fontSize: 18, color: "#6b7280", maxWidth: 620 }}>
+          Start with a rough thought. We’ll help you shape it step by step.
         </p>
       </section>
 
