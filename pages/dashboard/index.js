@@ -57,98 +57,21 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <div className="container section">Loading dashboard…</div>;
+    return <div style={{ padding: 40 }}>Loading dashboard…</div>;
   }
 
   return (
-    <div className="shell">
-      {/* Header */}
-      <header className="nav">
-        <div className="container navRow">
-          <div className="brand">
-            <div className="logoMark" />
-            <span>ZeusBolt</span>
-          </div>
-
-          <div className="navLinks">
-            <span className="chip">{user.email}</span>
-            <button className="btn" onClick={openBillingPortal}>
-              Billing
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main */}
-      <main className="section">
-        <div className="container">
-          <h1 className="h1">Dashboard</h1>
-
-          <div style={{ height: 24 }} />
-
-          <div className="grid2">
-            {/* Subscription Card */}
-            <div className="card">
-              <div className="cardPad">
-                <div className="kicker">
-                  <span className="bullet" />
-                  Subscription
-                </div>
-
-                {subscription ? (
-                  <>
-                    <p className="p">
-                      <strong>Plan:</strong> Pro
-                    </p>
-                    <p className="p">
-                      <strong>Status:</strong> Active
-                    </p>
-
-                    <div style={{ marginTop: 18 }}>
-                      <button
-                        className="btn btnPrimary"
-                        onClick={openBillingPortal}
-                      >
-                        Manage Billing
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="p">No active subscription</p>
-                )}
-              </div>
-            </div>
-
-            {/* Account Card */}
-            <div className="card">
-              <div className="cardPad">
-                <div className="kicker">
-                  <span className="bullet" />
-                  Account
-                </div>
-
-                <p className="p">
-                  Signed in as:
-                  <br />
-                  <strong>{user.email}</strong>
-                </p>
-
-                <div style={{ marginTop: 18 }}>
-                  <button
-                    className="btn"
-                    onClick={async () => {
-                      await supabase.auth.signOut();
-                      router.push("/auth");
-                    }}
-                  >
-                    Sign out
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
+    <div>
+      {/* HEADER */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "16px 32px",
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img
+            src="
