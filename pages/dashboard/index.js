@@ -108,6 +108,7 @@ export default function DashboardPage() {
         padding: 12,
         background: "#f9fafb",
       },
+      meta: { fontSize: 12, color: "#6b7280", marginBottom: 6 },
       error: { color: "#b91c1c", fontSize: 14, marginTop: 10 },
       badge: {
         display: "inline-block",
@@ -170,8 +171,7 @@ export default function DashboardPage() {
 
   async function saveIdea() {
     const trimmed = newIdea.trim();
-    if (!trimmed) return;
-    if (trimmed.length > MAX_LEN) return;
+    if (!trimmed || trimmed.length > MAX_LEN) return;
 
     setSavingIdea(true);
     setErrorMsg("");
@@ -224,8 +224,7 @@ export default function DashboardPage() {
 
   async function updateIdea(id) {
     const trimmed = editingText.trim();
-    if (!trimmed) return;
-    if (trimmed.length > MAX_LEN) return;
+    if (!trimmed || trimmed.length > MAX_LEN) return;
 
     setErrorMsg("");
 
@@ -266,6 +265,13 @@ export default function DashboardPage() {
   const saveDisabled = savingIdea || !newIdea.trim() || newTooLong;
   const editSaveDisabled = !editingText.trim() || editTooLong;
 
+  function formatMeta(p) {
+    if (p.updated_at && p.updated_at !== p.created_at) {
+      return `Edited ${new Date(p.updated_at).toLocaleString()}`;
+    }
+    return `Created ${new Date(p.created_at).toLocaleString()}`;
+  }
+
   return (
     <div style={styles.page}>
       <div style={{ marginBottom: 14 }}>
@@ -276,12 +282,8 @@ export default function DashboardPage() {
       <div style={styles.grid}>
         <div style={styles.card}>
           <div style={styles.cardTitle}>Subscription</div>
-          <p style={styles.cardText}>
-            Plan: <strong>{subPlan}</strong>
-          </p>
-          <p style={styles.cardText}>
-            Status: <strong>{subStatus}</strong>
-          </p>
+          <p style={styles.cardText}>Plan: <strong>{subPlan}</strong></p>
+          <p style={styles.cardText}>Status: <strong>{subStatus}</strong></p>
           <div style={styles.row}>
             <button style={styles.button} onClick={openBillingPortal}>
               Manage billing
@@ -290,7 +292,6 @@ export default function DashboardPage() {
               Sign out
             </button>
           </div>
-
           {errorMsg ? <div style={styles.error}>{errorMsg}</div> : null}
         </div>
 
@@ -307,8 +308,7 @@ export default function DashboardPage() {
 
           <div style={styles.counterRow}>
             <span style={newTooLong ? styles.counterBad : styles.counterOk}>
-              {newLen}/{MAX_LEN}
-              {newTooLong ? " (too long)" : ""}
+              {newLen}/{MAX_LEN}{newTooLong ? " (too long)" : ""}
             </span>
             <span style={styles.muted}>Only you can see these.</span>
           </div>
@@ -330,9 +330,7 @@ export default function DashboardPage() {
               <ul style={styles.list}>
                 {projects.map((p) => (
                   <li key={p.id} style={styles.ideaItem}>
-                    <div style={{ fontSize: 12, color: "#6b7280" }}>
-                      {new Date(p.created_at).toLocaleString()}
-                    </div>
+                    <div style={styles.meta}>{formatMeta(p)}</div>
 
                     {editingId === p.id ? (
                       <>
@@ -345,8 +343,7 @@ export default function DashboardPage() {
 
                         <div style={styles.counterRow}>
                           <span style={editTooLong ? styles.counterBad : styles.counterOk}>
-                            {editLen}/{MAX_LEN}
-                            {editTooLong ? " (too long)" : ""}
+                            {editLen}/{MAX_LEN}{editTooLong ? " (too long)" : ""}
                           </span>
                           <span style={styles.muted}>Editing</span>
                         </div>
