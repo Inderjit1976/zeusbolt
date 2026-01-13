@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState([]);
   const [loadingIdeas, setLoadingIdeas] = useState(true);
   const [savingIdea, setSavingIdea] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
   const styles = useMemo(
@@ -49,10 +50,10 @@ export default function DashboardPage() {
         fontSize: 16,
         fontWeight: 800,
         marginBottom: 8,
-        color: "#111827", // 🔑 FIXED VISIBILITY
+        color: "#111827",
       },
       muted: {
-        color: "#4b5563", // darker grey for contrast
+        color: "#4b5563",
         fontSize: 14,
       },
       cardText: {
@@ -79,8 +80,17 @@ export default function DashboardPage() {
         background: "#ffffff",
         color: "#111827",
         borderRadius: 12,
-        padding: "10px 12px",
-        fontWeight: 700,
+        padding: "8px 10px",
+        fontWeight: 600,
+        cursor: "pointer",
+      },
+      buttonDanger: {
+        border: "1px solid #fecaca",
+        background: "#fff",
+        color: "#b91c1c",
+        borderRadius: 10,
+        padding: "6px 10px",
+        fontWeight: 600,
         cursor: "pointer",
       },
       textarea: {
@@ -201,6 +211,33 @@ export default function DashboardPage() {
     setSavingIdea(false);
   }
 
+  async function deleteIdea(id) {
+    setDeletingId(id);
+    setErrorMsg("");
+
+    const { data } = await supabase.auth.getSession();
+    const token = data.session.access_token;
+
+    const res = await fetch("/api/projects/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      setErrorMsg(json.error || "Failed to delete idea");
+    } else {
+      await fetchIdeas(token);
+    }
+
+    setDeletingId(null);
+  }
+
   async function openBillingPortal() {
     const res = await fetch("/api/create-portal-session", { method: "POST" });
     const json = await res.json();
@@ -217,9 +254,6 @@ export default function DashboardPage() {
       <div style={{ marginBottom: 14 }}>
         <div style={styles.badge}>Dashboard</div>
         <h1 style={styles.h1}>Welcome, {userEmail}</h1>
-        <p style={{ ...styles.muted, color: "#e5e7eb" }}>
-          Manage your subscription and save your ideas.
-        </p>
       </div>
 
       <div style={styles.grid}>
@@ -244,7 +278,7 @@ export default function DashboardPage() {
         {/* Ideas */}
         <div style={styles.card}>
           <div style={styles.cardTitle}>Your Ideas</div>
-          <p style={styles.muted}>Save quick notes here. Only you can see them.</p>
+          <p style={styles.muted}>Only you can see these.</p>
 
           <textarea
             style={styles.textarea}
@@ -254,15 +288,10 @@ export default function DashboardPage() {
             placeholder="Describe your idea..."
           />
 
-          <div style={{ ...styles.row, justifyContent: "space-between", marginTop: 10 }}>
-            <button
-              style={styles.button}
-              onClick={saveIdea}
-              disabled={savingIdea}
-            >
+          <div style={{ ...styles.row, marginTop: 10 }}>
+            <button style={styles.button} onClick={saveIdea} disabled={savingIdea}>
               {savingIdea ? "Saving..." : "Save idea"}
             </button>
-
             <span style={styles.muted}>{projects.length} saved</span>
           </div>
 
@@ -279,6 +308,13 @@ export default function DashboardPage() {
                       {new Date(p.created_at).toLocaleString()}
                     </div>
                     <div style={styles.cardText}>{p.content}</div>
+                    <button
+                      style={styles.buttonDanger}
+                      onClick={() => deleteIdea(p.id)}
+                      disabled={deletingId === p.id}
+                    >
+                      {deletingId === p.id ? "Deleting..." : "Delete"}
+                    </button>
                   </li>
                 ))}
               </ul>
