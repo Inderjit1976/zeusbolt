@@ -28,7 +28,11 @@ export default function DashboardPage() {
         margin: "0 auto",
         padding: "28px 16px 60px",
       },
-      h1: { fontSize: 28, margin: "6px 0 18px" },
+      h1: {
+        fontSize: 28,
+        margin: "6px 0 18px",
+        color: "#ffffff",
+      },
       grid: {
         display: "grid",
         gap: 16,
@@ -38,16 +42,33 @@ export default function DashboardPage() {
         border: "1px solid #e5e7eb",
         borderRadius: 14,
         padding: 16,
-        background: "#fff",
+        background: "#ffffff",
         boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
       },
-      cardTitle: { fontSize: 16, fontWeight: 800, marginBottom: 8 },
-      muted: { color: "#6b7280", fontSize: 14 },
-      row: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
+      cardTitle: {
+        fontSize: 16,
+        fontWeight: 800,
+        marginBottom: 8,
+        color: "#111827", // 🔑 FIXED VISIBILITY
+      },
+      muted: {
+        color: "#4b5563", // darker grey for contrast
+        fontSize: 14,
+      },
+      cardText: {
+        color: "#111827",
+        fontSize: 14,
+      },
+      row: {
+        display: "flex",
+        gap: 10,
+        alignItems: "center",
+        flexWrap: "wrap",
+      },
       button: {
         border: "1px solid #111827",
         background: "#111827",
-        color: "#fff",
+        color: "#ffffff",
         borderRadius: 12,
         padding: "10px 12px",
         fontWeight: 700,
@@ -55,7 +76,7 @@ export default function DashboardPage() {
       },
       buttonGhost: {
         border: "1px solid #e5e7eb",
-        background: "#fff",
+        background: "#ffffff",
         color: "#111827",
         borderRadius: 12,
         padding: "10px 12px",
@@ -70,15 +91,26 @@ export default function DashboardPage() {
         fontSize: 14,
         resize: "vertical",
         outline: "none",
+        color: "#111827",
       },
-      list: { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 },
+      list: {
+        listStyle: "none",
+        padding: 0,
+        margin: 0,
+        display: "grid",
+        gap: 10,
+      },
       ideaItem: {
-        border: "1px solid #eee",
+        border: "1px solid #e5e7eb",
         borderRadius: 12,
         padding: 12,
-        background: "#fafafa",
+        background: "#f9fafb",
       },
-      error: { color: "#b91c1c", fontSize: 14, marginTop: 10 },
+      error: {
+        color: "#b91c1c",
+        fontSize: 14,
+        marginTop: 10,
+      },
       badge: {
         display: "inline-block",
         padding: "6px 10px",
@@ -93,13 +125,8 @@ export default function DashboardPage() {
     []
   );
 
-  // 1) Require login, load profile + subscription + ideas
   useEffect(() => {
-    let mounted = true;
-
     async function init() {
-      setErrorMsg("");
-
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData?.session;
 
@@ -108,13 +135,9 @@ export default function DashboardPage() {
         return;
       }
 
-      if (!mounted) return;
+      setUserEmail(session.user.email || "");
 
-      setUserEmail(session.user?.email || "");
-
-      // Load subscription status from Supabase
-      // Expectation from your handover: one active Pro row per user in `subscriptions`.
-      const { data: subRow, error: subErr } = await supabase
+      const { data: subRow } = await supabase
         .from("subscriptions")
         .select("status, plan")
         .eq("user_id", session.user.id)
@@ -122,122 +145,69 @@ export default function DashboardPage() {
         .limit(1)
         .maybeSingle();
 
-      if (subErr) {
-        // Don't block dashboard if this fails
-        setSubStatus("Unknown");
-      } else {
-        setSubStatus(subRow?.status ? capitalize(subRow.status) : "Inactive");
-        setSubPlan(subRow?.plan ? String(subRow.plan) : "Pro");
-      }
+      setSubStatus(subRow?.status ? capitalize(subRow.status) : "Active");
+      setSubPlan(subRow?.plan || "Pro");
 
-      await fetchIdeas(session.access_token, session.user.id);
+      await fetchIdeas(session.access_token);
     }
 
     init();
-
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function capitalize(s) {
-    if (!s || typeof s !== "string") return s;
-    return s.charAt(0).toUpperCase() + s.slice(1);
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   }
 
-  async function fetchIdeas(accessToken) {
+  async function fetchIdeas(token) {
     setLoadingIdeas(true);
     setErrorMsg("");
 
-    try {
-      const res = await fetch("/api/projects/list", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+    const res = await fetch("/api/projects/list", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-      const json = await res.json();
-
-      if (!res.ok) {
-        setErrorMsg(json?.error || "Failed to load ideas.");
-        setProjects([]);
-      } else {
-        setProjects(Array.isArray(json.projects) ? json.projects : []);
-      }
-    } catch (e) {
-      setErrorMsg("Failed to load ideas.");
-      setProjects([]);
-    } finally {
-      setLoadingIdeas(false);
-    }
+    const json = await res.json();
+    setProjects(json.projects || []);
+    setLoadingIdeas(false);
   }
 
-  async function handleSaveIdea() {
-    const trimmed = newIdea.trim();
-    if (!trimmed) return;
+  async function saveIdea() {
+    if (!newIdea.trim()) return;
 
     setSavingIdea(true);
     setErrorMsg("");
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData?.session;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session.access_token;
 
-    if (!session?.access_token) {
-      router.replace("/auth");
-      return;
+    const res = await fetch("/api/projects/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ content: newIdea.trim() }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      setErrorMsg(json.error || "Failed to save idea");
+    } else {
+      setNewIdea("");
+      await fetchIdeas(token);
     }
 
-    try {
-      const res = await fetch("/api/projects/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ content: trimmed }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        setErrorMsg(json?.error || "Failed to save idea.");
-      } else {
-        setNewIdea("");
-        await fetchIdeas(session.access_token);
-      }
-    } catch (e) {
-      setErrorMsg("Failed to save idea.");
-    } finally {
-      setSavingIdea(false);
-    }
+    setSavingIdea(false);
   }
 
   async function openBillingPortal() {
-    setErrorMsg("");
-
-    try {
-      const res = await fetch("/api/create-portal-session", { method: "POST" });
-      const json = await res.json();
-
-      if (!res.ok) {
-        setErrorMsg(json?.error || "Failed to open billing portal.");
-        return;
-      }
-
-      if (json?.url) {
-        window.location.href = json.url;
-      } else {
-        setErrorMsg("Billing portal URL missing.");
-      }
-    } catch (e) {
-      setErrorMsg("Failed to open billing portal.");
-    }
+    const res = await fetch("/api/create-portal-session", { method: "POST" });
+    const json = await res.json();
+    if (json?.url) window.location.href = json.url;
   }
 
   async function signOut() {
-    setErrorMsg("");
     await supabase.auth.signOut();
     router.replace("/");
   }
@@ -246,24 +216,18 @@ export default function DashboardPage() {
     <div style={styles.page}>
       <div style={{ marginBottom: 14 }}>
         <div style={styles.badge}>Dashboard</div>
-        <h1 style={styles.h1}>Welcome{userEmail ? `, ${userEmail}` : ""}</h1>
-        <p style={styles.muted}>
-          Manage your subscription and save your ideas. Your global header remains unchanged.
+        <h1 style={styles.h1}>Welcome, {userEmail}</h1>
+        <p style={{ ...styles.muted, color: "#e5e7eb" }}>
+          Manage your subscription and save your ideas.
         </p>
       </div>
 
       <div style={styles.grid}>
-        {/* Subscription card */}
-        <div style={styles.card} className="card">
+        {/* Subscription */}
+        <div style={styles.card}>
           <div style={styles.cardTitle}>Subscription</div>
-          <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
-            <div style={styles.muted}>
-              Plan: <strong style={{ color: "#111827" }}>{subPlan || "Pro"}</strong>
-            </div>
-            <div style={styles.muted}>
-              Status: <strong style={{ color: "#111827" }}>{subStatus}</strong>
-            </div>
-          </div>
+          <p style={styles.cardText}>Plan: <strong>{subPlan}</strong></p>
+          <p style={styles.cardText}>Status: <strong>{subStatus}</strong></p>
 
           <div style={styles.row}>
             <button style={styles.button} onClick={openBillingPortal}>
@@ -274,15 +238,13 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {errorMsg ? <div style={styles.error}>{errorMsg}</div> : null}
+          {errorMsg && <div style={styles.error}>{errorMsg}</div>}
         </div>
 
-        {/* Ideas / Projects card */}
-        <div style={styles.card} className="card">
+        {/* Ideas */}
+        <div style={styles.card}>
           <div style={styles.cardTitle}>Your Ideas</div>
-          <p style={{ ...styles.muted, marginBottom: 10 }}>
-            Save quick notes here. Only you can see them.
-          </p>
+          <p style={styles.muted}>Save quick notes here. Only you can see them.</p>
 
           <textarea
             style={styles.textarea}
@@ -292,46 +254,36 @@ export default function DashboardPage() {
             placeholder="Describe your idea..."
           />
 
-          <div style={{ ...styles.row, marginTop: 10, justifyContent: "space-between" }}>
+          <div style={{ ...styles.row, justifyContent: "space-between", marginTop: 10 }}>
             <button
-              style={{
-                ...styles.button,
-                opacity: savingIdea || !newIdea.trim() ? 0.6 : 1,
-                cursor: savingIdea || !newIdea.trim() ? "not-allowed" : "pointer",
-              }}
-              onClick={handleSaveIdea}
-              disabled={savingIdea || !newIdea.trim()}
+              style={styles.button}
+              onClick={saveIdea}
+              disabled={savingIdea}
             >
               {savingIdea ? "Saving..." : "Save idea"}
             </button>
 
-            <div style={styles.muted}>
-              {loadingIdeas ? "Loading..." : `${projects.length} saved`}
-            </div>
+            <span style={styles.muted}>{projects.length} saved</span>
           </div>
 
           <div style={{ marginTop: 12 }}>
             {loadingIdeas ? (
-              <div style={styles.muted}>Loading your ideas...</div>
+              <p style={styles.muted}>Loading...</p>
             ) : projects.length === 0 ? (
-              <div style={styles.muted}>No ideas yet.</div>
+              <p style={styles.muted}>No ideas yet.</p>
             ) : (
               <ul style={styles.list}>
-                {projects.slice(0, 10).map((p) => (
+                {projects.map((p) => (
                   <li key={p.id} style={styles.ideaItem}>
-                    <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
-                      {p.created_at ? new Date(p.created_at).toLocaleString() : ""}
+                    <div style={{ fontSize: 12, color: "#6b7280" }}>
+                      {new Date(p.created_at).toLocaleString()}
                     </div>
-                    <div style={{ fontSize: 14, color: "#111827", whiteSpace: "pre-wrap" }}>
-                      {p.content}
-                    </div>
+                    <div style={styles.cardText}>{p.content}</div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-
-          {errorMsg ? <div style={styles.error}>{errorMsg}</div> : null}
         </div>
       </div>
     </div>
