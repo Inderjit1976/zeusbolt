@@ -117,4 +117,81 @@ export default function Home() {
       </div>
 
       {/* TESTIMONIALS */}
+      <div style={{ marginTop: 100, maxWidth: 900 }}>
+        <h3 style={{ fontSize: 26, fontWeight: 700 }}>
+          Trusted by early builders
+        </h3>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: 24,
+            marginTop: 32,
+          }}
+        >
+          <div
+            style={{
+              padding: 20,
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 8,
+            }}
+          >
+            <p style={{ fontSize: 16 }}>
+              “ZeusBolt helped me think clearly about my app before writing a
+              single line of code.”
+            </p>
+            <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>
+              — Early access user
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: 20,
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 8,
+            }}
+          >
+            <p style={{ fontSize: 16 }}>
+              “The idea-to-structure flow is exactly what first-time founders
+              need.”
+            </p>
+            <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>
+              — Private beta tester
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: 20,
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 8,
+            }}
+          >
+            <p style={{ fontSize: 16 }}>
+              “Simple, clean, and focused. ZeusBolt feels like a real product,
+              not a demo.”
+            </p>
+            <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>
+              — Founder preview
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* FOOTER */}
       <div
+        style={{
+          marginTop: 120,
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          paddingTop: 24,
+          fontSize: 14,
+          opacity: 0.7,
+        }}
+      >
+        © {new Date().getFullYear()} ZeusBolt
+      </div>
+    </div>
+  );
+}
