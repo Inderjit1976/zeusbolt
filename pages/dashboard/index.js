@@ -72,16 +72,16 @@ export default function Dashboard() {
           borderBottom: "1px solid rgba(255,255,255,0.1)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <img
             src="/zeusbolt-logo.png"
             alt="ZeusBolt logo"
-            style={{ width: 36, height: 36 }}
+            style={{ width: 44, height: 44 }}
           />
-          <strong style={{ fontSize: 18 }}>ZeusBolt</strong>
+          <strong style={{ fontSize: 19 }}>ZeusBolt</strong>
         </div>
 
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span>{user.email}</span>
           <button onClick={openBillingPortal}>Billing</button>
         </div>
