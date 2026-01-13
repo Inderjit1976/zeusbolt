@@ -7,38 +7,13 @@ export default function Home() {
     <div
       style={{
         minHeight: "100vh",
-        padding: "64px 32px",
+        padding: "48px 32px",
         maxWidth: 1200,
         margin: "0 auto",
       }}
     >
-      {/* BRAND */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          lineHeight: 1,
-        }}
-      >
-        <h1 style={{ fontSize: 36, fontWeight: 800, margin: 0 }}>
-          ZeusBolt
-        </h1>
-
-        <img
-          src="/zeusbolt-underline.png"
-          alt="ZeusBolt underline lightning bolt"
-          style={{
-            width: 220,
-            height: "auto",
-            marginTop: 6,
-            display: "block",
-          }}
-        />
-      </div>
-
       {/* HERO */}
-      <div style={{ marginTop: 56, maxWidth: 700 }}>
+      <div style={{ marginTop: 32, maxWidth: 700 }}>
         <h2 style={{ fontSize: 30, fontWeight: 700 }}>
           Turn your ideas into production-ready apps.
         </h2>
@@ -137,7 +112,7 @@ export default function Home() {
               borderRadius: 8,
             }}
           >
-            <p style={{ fontSize: 16 }}>
+            <p>
               “ZeusBolt helped me think clearly about my app before writing a
               single line of code.”
             </p>
@@ -153,7 +128,7 @@ export default function Home() {
               borderRadius: 8,
             }}
           >
-            <p style={{ fontSize: 16 }}>
+            <p>
               “The idea-to-structure flow is exactly what first-time founders
               need.”
             </p>
@@ -169,7 +144,7 @@ export default function Home() {
               borderRadius: 8,
             }}
           >
-            <p style={{ fontSize: 16 }}>
+            <p>
               “Simple, clean, and focused. ZeusBolt feels like a real product,
               not a demo.”
             </p>
