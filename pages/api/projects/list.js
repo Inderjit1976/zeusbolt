@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
     const { data, error } = await supabaseAdmin
       .from("projects")
-      .select("id, content, created_at")
+      .select("id, content, created_at, updated_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20);
