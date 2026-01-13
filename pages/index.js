@@ -70,4 +70,15 @@ export default function Home() {
       {/* FOOTER */}
       <div
         style={{
-          marginTop: 12
+          marginTop: 120,
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          paddingTop: 24,
+          fontSize: 14,
+          opacity: 0.7,
+        }}
+      >
+        © {new Date().getFullYear()} ZeusBolt
+      </div>
+    </div>
+  );
+}
