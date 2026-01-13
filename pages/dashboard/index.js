@@ -68,33 +68,31 @@ export default function Dashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "20px 32px",
+          padding: "16px 32px",
           borderBottom: "1px solid rgba(255,255,255,0.1)",
         }}
       >
-        {/* BRAND: ZeusBolt text, then logo lying flat under it */}
+        {/* BRAND */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-start",
-            justifyContent: "center",
-            lineHeight: 1.1,
+            lineHeight: 1,
           }}
         >
-          <span style={{ fontSize: 22, fontWeight: 800 }}>ZeusBolt</span>
+          <span style={{ fontSize: 22, fontWeight: 800 }}>
+            ZeusBolt
+          </span>
 
           <img
-            src="/zeusbolt-logo.png"
-            alt="ZeusBolt lightning bolt logo"
+            src="/zeusbolt-underline.png"
+            alt="ZeusBolt underline lightning bolt"
             style={{
-              width: 120,          // makes it stand out
-              height: 40,          // keeps it compact
-              marginTop: 6,
-              objectFit: "contain",
+              width: 160,
+              height: "auto",
+              marginTop: 4,
               display: "block",
-              transform: "rotate(90deg)", // makes the bolt lie flat (horizontal)
-              transformOrigin: "left center",
             }}
           />
         </div>
@@ -115,12 +113,8 @@ export default function Dashboard() {
 
           {subscription ? (
             <>
-              <p>
-                <strong>Plan:</strong> Pro
-              </p>
-              <p>
-                <strong>Status:</strong> Active
-              </p>
+              <p><strong>Plan:</strong> Pro</p>
+              <p><strong>Status:</strong> Active</p>
               <button onClick={openBillingPortal}>Manage Billing</button>
             </>
           ) : (
