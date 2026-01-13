@@ -1,109 +1,89 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/router";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function Dashboard() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
-  const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  const supabase = useMemo(() => {
-    if (!supabaseUrl || !supabaseAnon) return null;
-    return createClient(supabaseUrl, supabaseAnon);
-  }, [supabaseUrl, supabaseAnon]);
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const getUserAndSubscription = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    async function loadDashboard() {
-      if (!supabase) {
-        setLoading(false);
+      if (!user) {
+        router.push("/login");
         return;
       }
 
-      const { data } = await supabase.auth.getSession();
-      const session = data?.session ?? null;
+      setUser(user);
 
-      if (!session) {
-        setLoading(false);
-        return;
-      }
-
-      setUser(session.user);
-
-      const { data: subData } = await supabase
+      const { data } = await supabase
         .from("subscriptions")
-        .select("plan, status")
-        .eq("user_id", session.user.id)
+        .select("*")
+        .eq("user_id", user.id)
         .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .single();
 
-      if (!cancelled) {
-        setSubscription(subData ?? null);
-        setLoading(false);
-      }
+      setSubscription(data || null);
+      setLoading(false);
+    };
+
+    getUserAndSubscription();
+  }, [router]);
+
+  const openBillingPortal = async () => {
+    if (!user) {
+      alert("User not loaded yet. Please wait.");
+      return;
     }
 
-    loadDashboard();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
+    const res = await fetch("/api/create-portal-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+
+    const data = await res.json();
+
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert(data.error || "Unable to open billing portal");
+    }
+  };
 
   if (loading) {
-    return <p style={{ padding: 20 }}>Loading dashboard…</p>;
+    return <p>Loading dashboard...</p>;
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>ZeusBolt Dashboard</h1>
+    <div style={{ padding: "40px" }}>
+      <h1>Dashboard</h1>
 
-      {user ? (
+      {subscription ? (
         <>
           <p>
-            Logged in as: <strong>{user.email}</strong>
+            <strong>Plan:</strong> Pro
+          </p>
+          <p>
+            <strong>Status:</strong> Active
           </p>
 
-          <h3>Subscription</h3>
-
-          {subscription && subscription.plan === "pro" ? (
-            <>
-              <p>
-                <strong>Plan:</strong> Pro
-              </p>
-              <p>
-                <strong>Billing status:</strong> Active (managed by Stripe)
-              </p>
-
-              <form action="/api/create-portal-session" method="POST">
-                <button style={{ marginTop: 12 }}>
-                  Manage billing
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <p>
-                <strong>Plan:</strong> Free
-              </p>
-              <p>
-                <strong>Status:</strong> Inactive
-              </p>
-
-              <form action="/api/create-checkout-session" method="POST">
-                <button style={{ marginTop: 12 }}>
-                  Upgrade to Pro
-                </button>
-              </form>
-            </>
-          )}
+          <button onClick={openBillingPortal}>
+            Manage Billing
+          </button>
         </>
       ) : (
-        <p>No user logged in</p>
+        <p>No active subscription</p>
       )}
     </div>
   );
