@@ -57,7 +57,7 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <div style={{ padding: 40 }}>Loading dashboard…</div>;
+    return <div style={{ padding: 48 }}>Loading dashboard…</div>;
   }
 
   return (
@@ -68,31 +68,80 @@ export default function Dashboard() {
         margin: "0 auto",
       }}
     >
-      <h1 style={{ fontSize: 28, fontWeight: 700 }}>
+      {/* PAGE TITLE */}
+      <h1 style={{ fontSize: 30, fontWeight: 700 }}>
         Dashboard
       </h1>
 
-      <div style={{ marginTop: 32 }}>
-        <h3>Subscription</h3>
+      <p style={{ marginTop: 8, opacity: 0.8 }}>
+        Welcome back{user?.email ? `, ${user.email}` : ""}.
+      </p>
 
-        {subscription ? (
-          <div style={{ marginTop: 12 }}>
-            <p>
-              <strong>Plan:</strong> Pro
+      {/* GRID */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 24,
+          marginTop: 40,
+        }}
+      >
+        {/* SUBSCRIPTION CARD */}
+        <div
+          style={{
+            padding: 24,
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 10,
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>
+            Subscription
+          </h3>
+
+          {subscription ? (
+            <div style={{ marginTop: 16 }}>
+              <p>
+                <strong>Plan:</strong> Pro
+              </p>
+              <p>
+                <strong>Status:</strong> Active
+              </p>
+
+              <button
+                style={{ marginTop: 16 }}
+                onClick={openBillingPortal}
+              >
+                Manage billing
+              </button>
+            </div>
+          ) : (
+            <p style={{ marginTop: 16 }}>
+              No active subscription
             </p>
-            <p>
-              <strong>Status:</strong> Active
-            </p>
-            <button onClick={openBillingPortal}>
-              Manage billing
-            </button>
-          </div>
-        ) : (
-          <p>No active subscription</p>
-        )}
+          )}
+        </div>
+
+        {/* PLACEHOLDER CARD (FUTURE) */}
+        <div
+          style={{
+            padding: 24,
+            border: "1px dashed rgba(255,255,255,0.15)",
+            borderRadius: 10,
+            opacity: 0.7,
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>
+            Your projects
+          </h3>
+
+          <p style={{ marginTop: 12 }}>
+            App ideas and generated structures will appear here.
+          </p>
+        </div>
       </div>
 
-      <div style={{ marginTop: 48 }}>
+      {/* FOOTER ACTIONS */}
+      <div style={{ marginTop: 56 }}>
         <button
           onClick={async () => {
             await supabase.auth.signOut();
