@@ -61,77 +61,46 @@ export default function Dashboard() {
   }
 
   return (
-    <div>
-      {/* HEADER */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "16px 32px",
-          borderBottom: "1px solid rgba(255,255,255,0.1)",
-        }}
-      >
-        {/* BRAND */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            lineHeight: 1,
-          }}
-        >
-          <span style={{ fontSize: 22, fontWeight: 800 }}>
-            ZeusBolt
-          </span>
+    <div
+      style={{
+        padding: "48px 32px",
+        maxWidth: 1200,
+        margin: "0 auto",
+      }}
+    >
+      <h1 style={{ fontSize: 28, fontWeight: 700 }}>
+        Dashboard
+      </h1>
 
-          <img
-            src="/zeusbolt-underline.png"
-            alt="ZeusBolt underline lightning bolt"
-            style={{
-              width: 160,
-              height: "auto",
-              marginTop: 4,
-              display: "block",
-            }}
-          />
-        </div>
+      <div style={{ marginTop: 32 }}>
+        <h3>Subscription</h3>
 
-        {/* ACTIONS */}
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <span>{user.email}</span>
-          <button onClick={openBillingPortal}>Billing</button>
-        </div>
+        {subscription ? (
+          <div style={{ marginTop: 12 }}>
+            <p>
+              <strong>Plan:</strong> Pro
+            </p>
+            <p>
+              <strong>Status:</strong> Active
+            </p>
+            <button onClick={openBillingPortal}>
+              Manage billing
+            </button>
+          </div>
+        ) : (
+          <p>No active subscription</p>
+        )}
       </div>
 
-      {/* CONTENT */}
-      <div style={{ padding: 40 }}>
-        <h1>Dashboard</h1>
-
-        <div style={{ marginTop: 24 }}>
-          <h3>Subscription</h3>
-
-          {subscription ? (
-            <>
-              <p><strong>Plan:</strong> Pro</p>
-              <p><strong>Status:</strong> Active</p>
-              <button onClick={openBillingPortal}>Manage Billing</button>
-            </>
-          ) : (
-            <p>No active subscription</p>
-          )}
-        </div>
-
-        <div style={{ marginTop: 40 }}>
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.push("/auth");
-            }}
-          >
-            Sign out
-          </button>
-        </div>
+      <div style={{ marginTop: 48 }}>
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut();
+            router.push("/auth");
+          }}
+        >
+          Sign out
+        </button>
       </div>
     </div>
   );
