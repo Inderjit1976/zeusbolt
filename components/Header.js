@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/router";
+import Link from "next/link";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -45,31 +46,38 @@ export default function Header() {
         borderBottom: "1px solid rgba(255,255,255,0.1)",
       }}
     >
-      {/* BRAND */}
-      <div
+      {/* BRAND — PROPER LINK */}
+      <Link
+        href="/"
         style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          lineHeight: 1,
-          cursor: "pointer",
+          textDecoration: "none",
+          color: "inherit",
         }}
-        onClick={() => router.push("/")}
       >
-        <span style={{ fontSize: 22, fontWeight: 800 }}>
-          ZeusBolt
-        </span>
-
-        <img
-          src="/zeusbolt-underline.png"
-          alt="ZeusBolt underline lightning bolt"
+        <div
           style={{
-            width: 160,
-            marginTop: 4,
-            display: "block",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            lineHeight: 1,
+            cursor: "pointer",
           }}
-        />
-      </div>
+        >
+          <span style={{ fontSize: 22, fontWeight: 800 }}>
+            ZeusBolt
+          </span>
+
+          <img
+            src="/zeusbolt-underline.png"
+            alt="ZeusBolt underline lightning bolt"
+            style={{
+              width: 160,
+              marginTop: 4,
+              display: "block",
+            }}
+          />
+        </div>
+      </Link>
 
       {/* ACTIONS (ONLY IF LOGGED IN) */}
       {user && (
