@@ -1,172 +1,162 @@
+import { useState } from "react";
 import { useRouter } from "next/router";
+import { createClient } from "@supabase/supabase-js";
 
-export default function Home() {
+const MAX_LEN = 2000;
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+export default function HomePage() {
   const router = useRouter();
 
+  const [idea, setIdea] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const len = idea.length;
+  const tooLong = len > MAX_LEN;
+
+  async function handleStart() {
+    setError("");
+
+    const trimmed = idea.trim();
+    if (!trimmed) {
+      setError("Please write something first.");
+      return;
+    }
+
+    if (trimmed.length > MAX_LEN) {
+      setError("Idea is too long.");
+      return;
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const session = data?.session;
+
+    if (!session) {
+      router.push("/auth");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/projects/create-draft", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ content: trimmed }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json?.error || "Failed to save draft");
+        setSaving(false);
+        return;
+      }
+
+      // Success → go to dashboard
+      router.push("/dashboard");
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      setSaving(false);
+    }
+  }
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "48px 32px",
-        maxWidth: 1200,
-        margin: "0 auto",
-      }}
-    >
+    <main style={{ maxWidth: 960, margin: "0 auto", padding: "60px 16px" }}>
       {/* HERO */}
-      <div style={{ marginTop: 32, maxWidth: 700 }}>
-        <h2 style={{ fontSize: 30, fontWeight: 700 }}>
-          Turn your ideas into production-ready apps.
-        </h2>
-
-        <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 16 }}>
-          ZeusBolt helps founders and builders design, structure, and manage
-          modern applications — with authentication, billing, and infrastructure
-          handled for you.
+      <section style={{ marginBottom: 40 }}>
+        <h1 style={{ fontSize: 42, fontWeight: 800, marginBottom: 12 }}>
+          Build your next SaaS idea
+        </h1>
+        <p style={{ fontSize: 18, color: "#6b7280", maxWidth: 600 }}>
+          ZeusBolt helps you turn ideas into real products — faster and with
+          clarity.
         </p>
+      </section>
 
-        <div style={{ marginTop: 28 }}>
-          <button
-            style={{
-              padding: "12px 20px",
-              fontSize: 16,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-            onClick={() => router.push("/auth")}
-          >
-            Get started
-          </button>
-        </div>
-      </div>
-
-      {/* INTERACTIVE TEASER */}
-      <div
+      {/* IDEA TEASER */}
+      <section
         style={{
-          marginTop: 80,
-          padding: "32px",
-          border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: 8,
+          border: "1px solid #e5e7eb",
+          borderRadius: 16,
+          padding: 20,
+          background: "#ffffff",
           maxWidth: 700,
         }}
       >
-        <h3 style={{ fontSize: 24, fontWeight: 700 }}>
-          Try ZeusBolt now
-        </h3>
-
-        <p style={{ marginTop: 12, fontSize: 16, opacity: 0.9 }}>
-          Describe your next big idea and see how ZeusBolt can structure it.
-        </p>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+          Describe your idea
+        </h2>
 
         <textarea
-          placeholder="e.g. A SaaS app for tracking fitness habits with subscriptions..."
-          rows={4}
+          rows={5}
+          value={idea}
+          onChange={(e) => setIdea(e.target.value)}
+          placeholder="e.g. A tool that helps freelancers track invoices automatically..."
           style={{
             width: "100%",
-            marginTop: 16,
+            border: "1px solid #e5e7eb",
+            borderRadius: 12,
             padding: 12,
-            fontSize: 16,
-            borderRadius: 6,
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "transparent",
-            color: "inherit",
+            fontSize: 14,
+            resize: "vertical",
           }}
         />
 
-        <div style={{ marginTop: 16 }}>
-          <button
-            style={{
-              padding: "10px 18px",
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-            onClick={() => router.push("/auth")}
-          >
-            Generate app structure
-          </button>
-
-          <span style={{ marginLeft: 12, fontSize: 14, opacity: 0.7 }}>
-            Sign in required
-          </span>
-        </div>
-      </div>
-
-      {/* TESTIMONIALS */}
-      <div style={{ marginTop: 100, maxWidth: 900 }}>
-        <h3 style={{ fontSize: 26, fontWeight: 700 }}>
-          Trusted by early builders
-        </h3>
-
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: 24,
-            marginTop: 32,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 8,
           }}
         >
-          <div
+          <span
             style={{
-              padding: 20,
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 8,
+              fontSize: 12,
+              color: tooLong ? "#b91c1c" : "#6b7280",
             }}
           >
-            <p>
-              “ZeusBolt helped me think clearly about my app before writing a
-              single line of code.”
-            </p>
-            <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>
-              — Early access user
-            </p>
-          </div>
+            {len}/{MAX_LEN}
+            {tooLong ? " (too long)" : ""}
+          </span>
 
-          <div
+          <button
+            onClick={handleStart}
+            disabled={saving || tooLong}
             style={{
-              padding: 20,
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 8,
+              border: "1px solid #111827",
+              background: saving || tooLong ? "#9ca3af" : "#111827",
+              color: "#ffffff",
+              borderRadius: 12,
+              padding: "10px 14px",
+              fontWeight: 700,
+              cursor: saving || tooLong ? "not-allowed" : "pointer",
             }}
           >
-            <p>
-              “The idea-to-structure flow is exactly what first-time founders
-              need.”
-            </p>
-            <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>
-              — Private beta tester
-            </p>
-          </div>
-
-          <div
-            style={{
-              padding: 20,
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 8,
-            }}
-          >
-            <p>
-              “Simple, clean, and focused. ZeusBolt feels like a real product,
-              not a demo.”
-            </p>
-            <p style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>
-              — Founder preview
-            </p>
-          </div>
+            {saving ? "Saving..." : "Get started"}
+          </button>
         </div>
-      </div>
+
+        {error && (
+          <div style={{ marginTop: 10, color: "#b91c1c", fontSize: 14 }}>
+            {error}
+          </div>
+        )}
+      </section>
 
       {/* FOOTER */}
-      <div
-        style={{
-          marginTop: 120,
-          borderTop: "1px solid rgba(255,255,255,0.1)",
-          paddingTop: 24,
-          fontSize: 14,
-          opacity: 0.7,
-        }}
-      >
+      <footer style={{ marginTop: 60, color: "#9ca3af", fontSize: 14 }}>
         © {new Date().getFullYear()} ZeusBolt
-      </div>
-    </div>
+      </footer>
+    </main>
   );
 }
