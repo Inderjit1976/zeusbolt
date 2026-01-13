@@ -51,7 +51,10 @@ export default async function handler(req, res) {
 
     const { error } = await supabaseAdmin
       .from("projects")
-      .update({ content: trimmed })
+      .update({
+        content: trimmed,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", id)
       .eq("user_id", userId);
 
