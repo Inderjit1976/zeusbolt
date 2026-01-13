@@ -68,19 +68,38 @@ export default function Dashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "16px 32px",
+          padding: "20px 32px",
           borderBottom: "1px solid rgba(255,255,255,0.1)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* BRAND: ZeusBolt text, then logo lying flat under it */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            lineHeight: 1.1,
+          }}
+        >
+          <span style={{ fontSize: 22, fontWeight: 800 }}>ZeusBolt</span>
+
           <img
             src="/zeusbolt-logo.png"
-            alt="ZeusBolt logo"
-            style={{ width: 44, height: 44 }}
+            alt="ZeusBolt lightning bolt logo"
+            style={{
+              width: 120,          // makes it stand out
+              height: 40,          // keeps it compact
+              marginTop: 6,
+              objectFit: "contain",
+              display: "block",
+              transform: "rotate(90deg)", // makes the bolt lie flat (horizontal)
+              transformOrigin: "left center",
+            }}
           />
-          <strong style={{ fontSize: 19 }}>ZeusBolt</strong>
         </div>
 
+        {/* ACTIONS */}
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span>{user.email}</span>
           <button onClick={openBillingPortal}>Billing</button>
@@ -102,9 +121,7 @@ export default function Dashboard() {
               <p>
                 <strong>Status:</strong> Active
               </p>
-              <button onClick={openBillingPortal}>
-                Manage Billing
-              </button>
+              <button onClick={openBillingPortal}>Manage Billing</button>
             </>
           ) : (
             <p>No active subscription</p>
