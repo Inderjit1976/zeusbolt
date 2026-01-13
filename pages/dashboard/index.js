@@ -14,13 +14,13 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
-    const getUserAndSubscription = async () => {
+    const load = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push("/login");
+        router.push("/auth");
         return;
       }
 
@@ -37,15 +37,10 @@ export default function Dashboard() {
       setLoading(false);
     };
 
-    getUserAndSubscription();
+    load();
   }, [router]);
 
   const openBillingPortal = async () => {
-    if (!user) {
-      alert("User not loaded yet. Please wait.");
-      return;
-    }
-
     const res = await fetch("/api/create-portal-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,29 +57,98 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <p>Loading dashboard...</p>;
+    return <div className="container section">Loading dashboard…</div>;
   }
 
   return (
-    <div style={{ padding: "40px" }}>
-      <h1>Dashboard</h1>
+    <div className="shell">
+      {/* Header */}
+      <header className="nav">
+        <div className="container navRow">
+          <div className="brand">
+            <div className="logoMark" />
+            <span>ZeusBolt</span>
+          </div>
 
-      {subscription ? (
-        <>
-          <p>
-            <strong>Plan:</strong> Pro
-          </p>
-          <p>
-            <strong>Status:</strong> Active
-          </p>
+          <div className="navLinks">
+            <span className="chip">{user.email}</span>
+            <button className="btn" onClick={openBillingPortal}>
+              Billing
+            </button>
+          </div>
+        </div>
+      </header>
 
-          <button onClick={openBillingPortal}>
-            Manage Billing
-          </button>
-        </>
-      ) : (
-        <p>No active subscription</p>
-      )}
+      {/* Main */}
+      <main className="section">
+        <div className="container">
+          <h1 className="h1">Dashboard</h1>
+
+          <div style={{ height: 24 }} />
+
+          <div className="grid2">
+            {/* Subscription Card */}
+            <div className="card">
+              <div className="cardPad">
+                <div className="kicker">
+                  <span className="bullet" />
+                  Subscription
+                </div>
+
+                {subscription ? (
+                  <>
+                    <p className="p">
+                      <strong>Plan:</strong> Pro
+                    </p>
+                    <p className="p">
+                      <strong>Status:</strong> Active
+                    </p>
+
+                    <div style={{ marginTop: 18 }}>
+                      <button
+                        className="btn btnPrimary"
+                        onClick={openBillingPortal}
+                      >
+                        Manage Billing
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="p">No active subscription</p>
+                )}
+              </div>
+            </div>
+
+            {/* Account Card */}
+            <div className="card">
+              <div className="cardPad">
+                <div className="kicker">
+                  <span className="bullet" />
+                  Account
+                </div>
+
+                <p className="p">
+                  Signed in as:
+                  <br />
+                  <strong>{user.email}</strong>
+                </p>
+
+                <div style={{ marginTop: 18 }}>
+                  <button
+                    className="btn"
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      router.push("/auth");
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
