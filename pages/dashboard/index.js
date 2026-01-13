@@ -74,4 +74,54 @@ export default function Dashboard() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src="
+            src="/zeusbolt-logo.png"
+            alt="ZeusBolt logo"
+            style={{ width: 36, height: 36 }}
+          />
+          <strong style={{ fontSize: 18 }}>ZeusBolt</strong>
+        </div>
+
+        <div style={{ display: "flex", gap: 12 }}>
+          <span>{user.email}</span>
+          <button onClick={openBillingPortal}>Billing</button>
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{ padding: 40 }}>
+        <h1>Dashboard</h1>
+
+        <div style={{ marginTop: 24 }}>
+          <h3>Subscription</h3>
+
+          {subscription ? (
+            <>
+              <p>
+                <strong>Plan:</strong> Pro
+              </p>
+              <p>
+                <strong>Status:</strong> Active
+              </p>
+              <button onClick={openBillingPortal}>
+                Manage Billing
+              </button>
+            </>
+          ) : (
+            <p>No active subscription</p>
+          )}
+        </div>
+
+        <div style={{ marginTop: 40 }}>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push("/auth");
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
