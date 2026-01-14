@@ -46,7 +46,7 @@ export default function Header() {
         borderBottom: "1px solid rgba(255,255,255,0.1)",
       }}
     >
-      {/* BRAND — PROPER LINK */}
+      {/* BRAND */}
       <Link
         href="/"
         style={{
@@ -59,11 +59,16 @@ export default function Header() {
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-start",
-            lineHeight: 1,
             cursor: "pointer",
           }}
         >
-          <span style={{ fontSize: 22, fontWeight: 800 }}>
+          <span
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              lineHeight: "1", // 👈 VERY IMPORTANT (removes hidden gap)
+            }}
+          >
             ZeusBolt
           </span>
 
@@ -71,15 +76,15 @@ export default function Header() {
             src="/zeusbolt-underline.png"
             alt="ZeusBolt underline lightning bolt"
             style={{
-              width: 130,     // 👈 slightly shorter
-              marginTop: 2,   // 👈 closer to text (THIS fixes it)
+              width: 120,     // slightly tighter
+              marginTop: 0,   // 👈 removes extra vertical gap
               display: "block",
             }}
           />
         </div>
       </Link>
 
-      {/* ACTIONS (ONLY IF LOGGED IN) */}
+      {/* ACTIONS */}
       {user && (
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span style={{ fontSize: 14, opacity: 0.9 }}>
