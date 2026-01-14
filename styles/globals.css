@@ -202,3 +202,45 @@ main { flex: 1; }
   color: var(--muted);
   font-size: 13px;
 }
+
+/* =====================================================
+   AUTH + MOBILE INPUT VISIBILITY FIX (APPENDED SAFELY)
+   ===================================================== */
+
+input,
+textarea,
+select {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #e5e7eb;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1;
+}
+
+/* Password dots visibility */
+input[type="password"] {
+  color: #111827 !important;
+}
+
+/* Mobile autofill (Safari / Chrome) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: #111827 !important;
+  box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Prevent iOS zoom */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
