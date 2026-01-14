@@ -71,8 +71,8 @@ export default function Header() {
             src="/zeusbolt-underline.png"
             alt="ZeusBolt underline lightning bolt"
             style={{
-              width: 160,
-              marginTop: 4,
+              width: 130,     // 👈 slightly shorter
+              marginTop: 2,   // 👈 closer to text (THIS fixes it)
               display: "block",
             }}
           />
