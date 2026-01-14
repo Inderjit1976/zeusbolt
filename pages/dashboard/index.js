@@ -28,7 +28,15 @@ export default function DashboardPage() {
   const styles = useMemo(
     () => ({
       page: { maxWidth: 980, margin: "0 auto", padding: "28px 16px 60px" },
-      h1: { fontSize: 28, margin: "6px 0 18px", color: "#ffffff" },
+      h1: {
+  fontSize: 28,
+  margin: "6px 0 18px",
+  background: "linear-gradient(90deg, #6ee7b7 0%, #fca5a5 100%)",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  fontWeight: 800,
+},
+
       grid: {
         display: "grid",
         gap: 16,
