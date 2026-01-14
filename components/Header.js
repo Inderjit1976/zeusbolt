@@ -47,15 +47,16 @@ export default function Header() {
       {/* BRAND LOGO */}
       <Link href="/" style={{ textDecoration: "none" }}>
         <img
-          src="/zeusbolt.png"
-          alt="ZeusBolt logo"
-          style={{
-            height: 48,
-            width: "auto",
-            display: "block",
-            cursor: "pointer",
-          }}
-        />
+  src="/zeusbolt.png"
+  alt="ZeusBolt logo"
+  style={{
+    height: 64, // 👈 increased for visibility
+    width: "auto",
+    display: "block",
+    cursor: "pointer",
+  }}
+/>
+
       </Link>
 
       {/* ACTIONS */}
