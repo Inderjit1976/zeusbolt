@@ -555,6 +555,12 @@ export default function DashboardPage() {
             rows={3}
             value={newIdea}
             onChange={(e) => setNewIdea(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                if (!saveDisabled) saveIdea();
+              }
+            }}
             placeholder="Write a new idea..."
           />
 
@@ -592,6 +598,12 @@ export default function DashboardPage() {
                           rows={3}
                           value={editingText}
                           onChange={(e) => setEditingText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                              e.preventDefault();
+                              if (!editSaveDisabled) updateIdea(p.id);
+                            }
+                          }}
                         />
 
                         <div style={styles.counterRow}>
