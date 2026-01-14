@@ -2,16 +2,25 @@ import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
 export default function Header() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !anonKey) {
+      console.error("Missing Supabase public env vars");
+      return;
+    }
+
+    const supabase = createClient(url, anonKey);
+
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error) {
+        console.error("Auth error:", error.message);
+        return;
+      }
       setUser(data?.user || null);
     });
   }, []);
@@ -50,8 +59,8 @@ export default function Header() {
           src="/zeusbolt.png"
           alt="ZeusBolt logo"
           style={{
-            height: 256,        // BIG, clear, intentional
-            maxHeight: "30vh",  // mobile safety
+            height: 256,
+            maxHeight: "30vh",
             width: "auto",
             display: "block",
             cursor: "pointer",
