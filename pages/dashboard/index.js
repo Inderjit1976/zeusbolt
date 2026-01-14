@@ -31,12 +31,18 @@ export default function DashboardPage() {
 
   const styles = useMemo(
     () => ({
-      page: { maxWidth: 980, margin: "0 auto", padding: "28px 16px 60px" },
+      // ✅ More breathing room + slightly wider max width
+      page: { maxWidth: 1020, margin: "0 auto", padding: "40px 20px 80px" },
+
+      // ✅ Section wrappers for consistent vertical rhythm
+      topBlock: { marginBottom: 22 },
+      section: { marginBottom: 26 },
+      sectionTight: { marginBottom: 18 },
 
       // ✅ Welcome line — same brand feel as the logo (multi-stop gradient)
       h1: {
-        fontSize: 28,
-        margin: "6px 0 18px",
+        fontSize: 30,
+        margin: "6px 0 14px",
         background:
           "linear-gradient(90deg, #22c55e 0%, #facc15 40%, #fb923c 70%, #ef4444 100%)",
         WebkitBackgroundClip: "text",
@@ -45,48 +51,50 @@ export default function DashboardPage() {
         letterSpacing: "-0.02em",
       },
 
-      // Small label/badge at top
+      // ✅ Badge gets breathing room
       badge: {
         display: "inline-block",
-        padding: "6px 10px",
+        padding: "6px 12px",
         borderRadius: 999,
         background: "rgba(34,197,94,0.10)",
         color: "#86efac",
         fontWeight: 800,
         fontSize: 12,
         border: "1px solid rgba(34,197,94,0.25)",
+        marginBottom: 8,
       },
 
+      // ✅ Grid: calmer spacing between main cards
       grid: {
         display: "grid",
-        gap: 16,
-        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gap: 24,
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
       },
 
-      // Default white cards (existing)
+      // ✅ Cards: slightly bigger padding + radius = more premium
       card: {
         border: "1px solid #e5e7eb",
-        borderRadius: 14,
-        padding: 16,
+        borderRadius: 16,
+        padding: 20,
         background: "#ffffff",
       },
       cardTitle: {
         fontSize: 16,
         fontWeight: 900,
-        marginBottom: 8,
+        marginBottom: 10,
         color: "#111827",
       },
       muted: { color: "#4b5563", fontSize: 14 },
       cardText: { color: "#111827", fontSize: 14 },
 
-      row: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
+      row: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" },
 
       button: {
         border: "1px solid #111827",
         background: "#111827",
         color: "#ffffff",
         borderRadius: 12,
-        padding: "8px 12px",
+        padding: "10px 14px",
         fontWeight: 800,
         cursor: "pointer",
       },
@@ -95,7 +103,7 @@ export default function DashboardPage() {
         background: "#9ca3af",
         color: "#ffffff",
         borderRadius: 12,
-        padding: "8px 12px",
+        padding: "10px 14px",
         fontWeight: 800,
         cursor: "not-allowed",
       },
@@ -103,8 +111,8 @@ export default function DashboardPage() {
         border: "1px solid #e5e7eb",
         background: "#ffffff",
         color: "#111827",
-        borderRadius: 10,
-        padding: "6px 10px",
+        borderRadius: 12,
+        padding: "8px 12px",
         fontWeight: 700,
         cursor: "pointer",
       },
@@ -112,8 +120,8 @@ export default function DashboardPage() {
         border: "1px solid #fecaca",
         background: "#ffffff",
         color: "#b91c1c",
-        borderRadius: 10,
-        padding: "6px 10px",
+        borderRadius: 12,
+        padding: "8px 12px",
         fontWeight: 700,
         cursor: "pointer",
       },
@@ -121,8 +129,8 @@ export default function DashboardPage() {
       textarea: {
         width: "100%",
         border: "1px solid #e5e7eb",
-        borderRadius: 12,
-        padding: 12,
+        borderRadius: 14,
+        padding: 14,
         fontSize: 14,
         resize: "vertical",
       },
@@ -132,26 +140,27 @@ export default function DashboardPage() {
         justifyContent: "space-between",
         alignItems: "center",
         marginTop: 8,
+        marginBottom: 10,
       },
       counterOk: { color: "#6b7280", fontSize: 12 },
       counterBad: { color: "#b91c1c", fontSize: 12, fontWeight: 800 },
 
-      list: { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 },
+      list: { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 },
       ideaItem: {
         border: "1px solid #e5e7eb",
-        borderRadius: 12,
-        padding: 12,
+        borderRadius: 14,
+        padding: 14,
         background: "#f9fafb",
       },
       meta: { fontSize: 12, color: "#6b7280", marginBottom: 6 },
       error: { color: "#b91c1c", fontSize: 14, marginTop: 10 },
 
-      // ===== NEW “LIVELY” DASHBOARD LAYER =====
+      // ===== “LIVELY” DASHBOARD LAYER =====
 
-      // Hero journey card (dark glass style)
+      // ✅ Journey hero: more spacing, calmer layout
       heroCardWrap: {
         marginTop: 10,
-        marginBottom: 14,
+        marginBottom: 18,
         borderRadius: 18,
         padding: 1,
         background:
@@ -159,7 +168,7 @@ export default function DashboardPage() {
       },
       heroCard: {
         borderRadius: 18,
-        padding: 16,
+        padding: 18,
         background:
           "linear-gradient(180deg, rgba(17,24,39,0.88) 0%, rgba(17,24,39,0.72) 100%)",
         border: "1px solid rgba(255,255,255,0.10)",
@@ -169,16 +178,16 @@ export default function DashboardPage() {
         color: "#ffffff",
         fontWeight: 900,
         fontSize: 16,
-        marginBottom: 10,
+        marginBottom: 12,
         letterSpacing: "-0.01em",
       },
-      heroSub: { color: "rgba(255,255,255,0.80)", fontSize: 13, marginTop: 10 },
+      heroSub: { color: "rgba(255,255,255,0.80)", fontSize: 13, marginTop: 12 },
 
       stepsRow: {
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 10,
-        marginTop: 8,
+        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+        gap: 12,
+        marginTop: 10,
       },
       step: {
         padding: 12,
@@ -201,16 +210,16 @@ export default function DashboardPage() {
       stepTitle: { color: "#ffffff", fontWeight: 900, fontSize: 13 },
       stepDesc: { color: "rgba(255,255,255,0.80)", fontSize: 12, lineHeight: 1.35 },
 
-      // Quick actions (cards)
+      // ✅ Quick actions: more breathing room
       actionsRow: {
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-        gap: 12,
-        marginBottom: 14,
+        gap: 14,
+        marginBottom: 18,
       },
       actionCard: {
         borderRadius: 16,
-        padding: 14,
+        padding: 16,
         border: "1px solid rgba(255,255,255,0.10)",
         background: "rgba(255,255,255,0.06)",
         boxShadow: "0 10px 25px rgba(0,0,0,0.22)",
@@ -219,23 +228,23 @@ export default function DashboardPage() {
       actionTitle: { color: "#ffffff", fontWeight: 900, marginBottom: 6 },
       actionText: { color: "rgba(255,255,255,0.78)", fontSize: 13, lineHeight: 1.35 },
 
-      // “What we’re working on” card (dark glass)
+      // ✅ Roadmap: calmer spacing + less “jammed”
       roadmapCard: {
         borderRadius: 16,
-        padding: 14,
+        padding: 16,
         border: "1px solid rgba(255,255,255,0.10)",
         background: "rgba(255,255,255,0.06)",
         boxShadow: "0 10px 25px rgba(0,0,0,0.22)",
-        marginBottom: 16,
+        marginBottom: 28,
       },
-      roadmapTitle: { color: "#ffffff", fontWeight: 900, marginBottom: 8 },
+      roadmapTitle: { color: "#ffffff", fontWeight: 900, marginBottom: 10 },
       roadmapText: { color: "rgba(255,255,255,0.78)", fontSize: 13, lineHeight: 1.45 },
       roadmapList: {
         color: "rgba(255,255,255,0.78)",
         fontSize: 13,
         lineHeight: 1.45,
-        marginTop: 8,
-        marginBottom: 0,
+        marginTop: 10,
+        marginBottom: 8,
         paddingLeft: 18,
       },
     }),
@@ -405,7 +414,6 @@ export default function DashboardPage() {
 
   function focusNewIdea() {
     scrollToIdeas();
-    // Small delay to ensure scroll finishes before focus
     setTimeout(() => {
       if (newIdeaTextareaRef.current) newIdeaTextareaRef.current.focus();
     }, 250);
@@ -413,7 +421,8 @@ export default function DashboardPage() {
 
   return (
     <div style={styles.page}>
-      <div style={{ marginBottom: 14 }}>
+      {/* ===== TOP: badge + welcome + journey zone ===== */}
+      <div style={styles.topBlock}>
         <div style={styles.badge}>Dashboard</div>
         <h1 style={styles.h1}>Welcome, {userEmail}</h1>
 
@@ -565,7 +574,7 @@ export default function DashboardPage() {
             {savingIdea ? "Saving..." : "Save idea"}
           </button>
 
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 14 }}>
             {loadingIdeas ? (
               <p style={styles.muted}>Loading...</p>
             ) : projects.length === 0 ? (
