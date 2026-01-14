@@ -35,7 +35,7 @@ export default function Header() {
   };
 
   return (
-    <div
+    <header
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -47,21 +47,19 @@ export default function Header() {
       {/* BRAND LOGO */}
       <Link href="/" style={{ textDecoration: "none" }}>
         <img
-  src="/zeusbolt.png"
-  alt="ZeusBolt logo"
-  style={{
-    height: 128,          // 👈 ~3x bigger, clear & readable
-    maxHeight: "22vh",    // 👈 safety for small screens
-    width: "auto",
-    display: "block",
-    cursor: "pointer",
-  }}
-/>
-
-
+          src="/zeusbolt.png"
+          alt="ZeusBolt logo"
+          style={{
+            height: 256,        // BIG, clear, intentional
+            maxHeight: "30vh",  // mobile safety
+            width: "auto",
+            display: "block",
+            cursor: "pointer",
+          }}
+        />
       </Link>
 
-      {/* ACTIONS */}
+      {/* ACTIONS (ONLY WHEN LOGGED IN) */}
       {user && (
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span style={{ fontSize: 14, opacity: 0.9 }}>
@@ -73,6 +71,6 @@ export default function Header() {
           </button>
         </div>
       )}
-    </div>
+    </header>
   );
 }
