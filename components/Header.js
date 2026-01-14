@@ -47,13 +47,7 @@ export default function Header() {
       }}
     >
       {/* BRAND */}
-      <Link
-        href="/"
-        style={{
-          textDecoration: "none",
-          color: "inherit",
-        }}
-      >
+      <Link href="/" style={{ textDecoration: "none" }}>
         <div
           style={{
             display: "flex",
@@ -66,7 +60,10 @@ export default function Header() {
             style={{
               fontSize: 22,
               fontWeight: 800,
-              lineHeight: "0.95", // 👈 compress text box
+              lineHeight: "1",
+              background: "linear-gradient(90deg, #6ee7b7 0%, #fca5a5 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
             }}
           >
             ZeusBolt
@@ -74,10 +71,10 @@ export default function Header() {
 
           <img
             src="/zeusbolt-underline.png"
-            alt="ZeusBolt underline lightning bolt"
+            alt="ZeusBolt lightning underline"
             style={{
               width: 120,
-              marginTop: -2, // 👈 PULLS underline UP (~2mm)
+              marginTop: -8, // 👈 THIS compensates for image padding
               display: "block",
             }}
           />
