@@ -66,7 +66,7 @@ export default function Header() {
             style={{
               fontSize: 22,
               fontWeight: 800,
-              lineHeight: "1", // 👈 VERY IMPORTANT (removes hidden gap)
+              lineHeight: "0.95", // 👈 compress text box
             }}
           >
             ZeusBolt
@@ -76,8 +76,8 @@ export default function Header() {
             src="/zeusbolt-underline.png"
             alt="ZeusBolt underline lightning bolt"
             style={{
-              width: 120,     // slightly tighter
-              marginTop: 0,   // 👈 removes extra vertical gap
+              width: 120,
+              marginTop: -2, // 👈 PULLS underline UP (~2mm)
               display: "block",
             }}
           />
