@@ -40,7 +40,20 @@ export default function AuthPage() {
 
   return (
     <div style={{ maxWidth: 420, margin: "96px auto", textAlign: "center" }}>
-      <h1>Welcome to ZeusBolt</h1>
+      <h1 style={{ marginBottom: 8 }}>
+        Welcome to{" "}
+        <span
+          style={{
+            background: "linear-gradient(90deg, #6ee7b7 0%, #fca5a5 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            fontWeight: 800,
+          }}
+        >
+          ZeusBolt
+        </span>
+      </h1>
+
       <p style={{ color: "#666", marginBottom: 24 }}>
         Log in to access your dashboard.
       </p>
