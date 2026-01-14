@@ -31,7 +31,9 @@ export default function DashboardPage() {
       h1: {
   fontSize: 28,
   margin: "6px 0 18px",
-  background: "linear-gradient(90deg, #6ee7b7 0%, #fca5a5 100%)",
+  background:
+  "linear-gradient(90deg, #22c55e 0%, #facc15 40%, #fb923c 70%, #ef4444 100%)",
+
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
   fontWeight: 800,
