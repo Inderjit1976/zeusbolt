@@ -50,12 +50,14 @@ export default function Header() {
   src="/zeusbolt.png"
   alt="ZeusBolt logo"
   style={{
-    height: 64, // 👈 increased for visibility
+    height: 128,          // 👈 ~3x bigger, clear & readable
+    maxHeight: "22vh",    // 👈 safety for small screens
     width: "auto",
     display: "block",
     cursor: "pointer",
   }}
 />
+
 
       </Link>
 
