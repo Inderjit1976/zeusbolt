@@ -1,12 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: { persistSession: false },
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    throw new Error("Missing Supabase admin environment variables");
   }
-);
+
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false },
+  });
+}
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -14,28 +19,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const authHeader = req.headers.authorization || "";
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.replace("Bearer ", "")
-      : null;
+    const supabaseAdmin = getSupabaseAdmin();
 
-    if (!token) {
-      return res.status(401).json({ error: "Missing auth token" });
+    // Get user from Supabase auth cookie/session (no manual Bearer header required)
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(
+      req.headers.authorization?.replace("Bearer ", "") || undefined
+    );
+
+    if (authError || !user) {
+      return res.status(401).json({ error: "Unauthorized" });
     }
-
-    const { data: userData, error: userError } =
-      await supabaseAdmin.auth.getUser(token);
-
-    if (userError || !userData?.user) {
-      return res.status(401).json({ error: "Invalid session" });
-    }
-
-    const userId = userData.user.id;
 
     const { data, error } = await supabaseAdmin
       .from("projects")
       .select("id, content, created_at, updated_at")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -45,6 +46,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ projects: data || [] });
   } catch (err) {
-    return res.status(500).json({ error: "Unexpected server error" });
+    console.error("projects/list error:", err);
+    return res.status(500).json({ error: "Server configuration error" });
   }
 }
