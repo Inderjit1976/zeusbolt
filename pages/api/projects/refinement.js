@@ -15,12 +15,10 @@ export default async function handler(req, res) {
 
   try {
     const authHeader = req.headers.authorization || "";
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.replace("Bearer ", "")
-      : null;
+    const token = authHeader.replace("Bearer ", "");
 
     if (!token) {
-      return res.status(401).json({ error: "Missing auth token" });
+      return res.status(401).json({ error: "Missing token" });
     }
 
     const { data: userData, error: userError } =
@@ -30,32 +28,46 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid session" });
     }
 
-    const userId = userData.user.id;
+    const { id } = req.query;
+
+    if (!id) {
+      return res.status(400).json({ error: "Missing project id" });
+    }
 
     const { data, error } = await supabaseAdmin
       .from("projects")
-      .select(`
-        id,
+      .select(
+        `
         content,
-        created_at,
-        updated_at,
         refinement_step_1,
         refinement_step_2,
         refinement_step_3,
         refinement_step_4,
         refinement_step_5,
         refinement_step_6
-      `)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(20);
+        `
+      )
+      .eq("id", id)
+      .eq("user_id", userData.user.id)
+      .single();
 
-    if (error) {
-      return res.status(500).json({ error: error.message });
+    if (error || !data) {
+      return res.status(404).json({ error: "Project not found" });
     }
 
-    return res.status(200).json({ projects: data || [] });
+    return res.status(200).json({
+      content: data.content,
+      refinement: {
+        step_1: data.refinement_step_1 || "",
+        step_2: data.refinement_step_2 || "",
+        step_3: data.refinement_step_3 || "",
+        step_4: data.refinement_step_4 || "",
+        step_5: data.refinement_step_5 || "",
+        step_6: data.refinement_step_6 || "",
+      },
+    });
   } catch (err) {
-    return res.status(500).json({ error: "Unexpected server error" });
+    console.error("Refinement API error:", err);
+    return res.status(500).json({ error: "Unexpected error" });
   }
 }

@@ -16,14 +16,7 @@ export default function AuthPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // 1. If user is already logged in, go to dashboard
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        router.replace("/dashboard");
-      }
-    });
-
-    // 2. Listen for login events and redirect
+    // Redirect ONLY after successful sign-in
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -32,7 +25,6 @@ export default function AuthPage() {
       }
     });
 
-    // 3. Cleanup listener when page unmounts
     return () => {
       subscription.unsubscribe();
     };

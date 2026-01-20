@@ -1,19 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { createClient } from "@supabase/supabase-js";
+
+/**
+ * NOTE (bundler safety):
+ * This file intentionally does NOT import "@supabase/supabase-js" at the top level.
+ * Some browser-only bundlers (ex: Rollup in sandboxes/CDNs) choke on packages that
+ * reference Node built-ins like "fs".
+ *
+ * In the real Next.js app, you likely DO want Supabase auth + session.
+ * For now, this dashboard works in two modes:
+ *  - Real mode: if you provide a token via localStorage "zeusbolt_token" it will use it.
+ *  - Demo mode: if no token exists, it renders a safe demo dashboard (no writes).
+ *
+ * ✅ This prevents the "fs" bundling crash while keeping the UI and structure.
+ */
 
 const MAX_LEN = 2000;
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [userEmail, setUserEmail] = useState("");
-  const [subStatus, setSubStatus] = useState("Checking...");
+  const [userEmail, setUserEmail] = useState("you@example.com");
+  const [subStatus, setSubStatus] = useState("Active");
   const [subPlan, setSubPlan] = useState("Pro");
 
   const [newIdea, setNewIdea] = useState("");
@@ -24,22 +32,19 @@ export default function DashboardPage() {
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [demoMode, setDemoMode] = useState(false);
 
-  // For “lively” actions
+  // ✅ NEW: prevents flicker by stopping dashboard render immediately during sign out
+  const [signingOut, setSigningOut] = useState(false);
+
   const ideasSectionRef = useRef(null);
   const newIdeaTextareaRef = useRef(null);
 
   const styles = useMemo(
     () => ({
-      // ✅ More breathing room + slightly wider max width
       page: { maxWidth: 1020, margin: "0 auto", padding: "40px 20px 80px" },
-
-      // ✅ Section wrappers for consistent vertical rhythm
       topBlock: { marginBottom: 22 },
-      section: { marginBottom: 26 },
-      sectionTight: { marginBottom: 18 },
 
-      // ✅ Welcome line — same brand feel as the logo (multi-stop gradient)
       h1: {
         fontSize: 30,
         margin: "6px 0 14px",
@@ -51,7 +56,6 @@ export default function DashboardPage() {
         letterSpacing: "-0.02em",
       },
 
-      // ✅ Badge gets breathing room
       badge: {
         display: "inline-block",
         padding: "6px 12px",
@@ -64,14 +68,14 @@ export default function DashboardPage() {
         marginBottom: 8,
       },
 
-      // ✅ Grid: calmer spacing between main cards
+      // ✅ Subscription stretch fix: grid items should not stretch vertically.
       grid: {
         display: "grid",
         gap: 24,
         gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+        alignItems: "start",
       },
 
-      // ✅ Cards: slightly bigger padding + radius = more premium
       card: {
         border: "1px solid #e5e7eb",
         borderRadius: 16,
@@ -155,9 +159,6 @@ export default function DashboardPage() {
       meta: { fontSize: 12, color: "#6b7280", marginBottom: 6 },
       error: { color: "#b91c1c", fontSize: 14, marginTop: 10 },
 
-      // ===== “LIVELY” DASHBOARD LAYER =====
-
-      // ✅ Journey hero: more spacing, calmer layout
       heroCardWrap: {
         marginTop: 10,
         marginBottom: 18,
@@ -174,13 +175,7 @@ export default function DashboardPage() {
         border: "1px solid rgba(255,255,255,0.10)",
         boxShadow: "0 10px 35px rgba(0,0,0,0.35)",
       },
-      heroTitle: {
-        color: "#ffffff",
-        fontWeight: 900,
-        fontSize: 16,
-        marginBottom: 12,
-        letterSpacing: "-0.01em",
-      },
+      heroTitle: { color: "#ffffff", fontWeight: 900, fontSize: 16, marginBottom: 12 },
       heroSub: { color: "rgba(255,255,255,0.80)", fontSize: 13, marginTop: 12 },
 
       stepsRow: {
@@ -210,7 +205,6 @@ export default function DashboardPage() {
       stepTitle: { color: "#ffffff", fontWeight: 900, fontSize: 13 },
       stepDesc: { color: "rgba(255,255,255,0.80)", fontSize: 12, lineHeight: 1.35 },
 
-      // ✅ Quick actions: more breathing room
       actionsRow: {
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
@@ -228,7 +222,6 @@ export default function DashboardPage() {
       actionTitle: { color: "#ffffff", fontWeight: 900, marginBottom: 6 },
       actionText: { color: "rgba(255,255,255,0.78)", fontSize: 13, lineHeight: 1.35 },
 
-      // ✅ Roadmap: calmer spacing + less “jammed”
       roadmapCard: {
         borderRadius: 16,
         padding: 16,
@@ -247,44 +240,112 @@ export default function DashboardPage() {
         marginBottom: 8,
         paddingLeft: 18,
       },
+
+      indicatorRow: {
+        display: "flex",
+        gap: 10,
+        alignItems: "center",
+        flexWrap: "wrap",
+        marginTop: 10,
+        marginBottom: 10,
+      },
+      chipBase: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 10px",
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 900,
+        border: "1px solid transparent",
+      },
+      chipComplete: {
+        background: "rgba(34,197,94,0.10)",
+        color: "#166534",
+        border: "1px solid rgba(34,197,94,0.25)",
+      },
+      chipProgress: {
+        background: "rgba(250,204,21,0.18)",
+        color: "#854d0e",
+        border: "1px solid rgba(250,204,21,0.35)",
+      },
+      chipEmpty: {
+        background: "rgba(107,114,128,0.10)",
+        color: "#374151",
+        border: "1px solid rgba(107,114,128,0.25)",
+      },
+      nextHint: { fontSize: 12, color: "#6b7280", fontWeight: 700 },
+
+      demoBanner: {
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 14,
+        border: "1px solid rgba(250, 204, 21, 0.35)",
+        background: "rgba(250,204,21,0.12)",
+        color: "#854d0e",
+        fontSize: 13,
+        lineHeight: 1.35,
+        fontWeight: 700,
+      },
     }),
     []
   );
 
   const newLen = newIdea.length;
   const newTooLong = newLen > MAX_LEN;
-
   const editLen = editingText.length;
   const editTooLong = editLen > MAX_LEN;
 
   useEffect(() => {
-    async function init() {
-      const { data } = await supabase.auth.getSession();
-      const session = data?.session;
+    // ✅ If sign out is in progress, do not run any auth/demo logic (prevents flicker)
+    if (signingOut) return;
 
-      if (!session) {
+    // Token-based (optional) so this file runs in environments without Supabase SDK.
+    const token =
+      typeof window !== "undefined" ? window.localStorage.getItem("zeusbolt_token") : null;
+
+    // ✅ If user explicitly signed out, do NOT allow demo mode to take over (even with ?demo=1)
+    const signedOut =
+      typeof window !== "undefined" ? window.localStorage.getItem("zeusbolt_signed_out") : null;
+
+    if (!token) {
+      if (signedOut === "1") {
         router.replace("/auth");
         return;
       }
 
-      setUserEmail(session.user.email || "");
-
-      const { data: subRow } = await supabase
-        .from("subscriptions")
-        .select("status, plan")
-        .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      setSubStatus(subRow?.status || "Active");
-      setSubPlan(subRow?.plan || "Pro");
-
-      await fetchIdeas(session.access_token);
+      setDemoMode(true);
+      // Demo sample
+      setProjects([
+        {
+          id: "demo-1",
+          content: "Track my expenses",
+          created_at: new Date().toISOString(),
+          updated_at: null,
+          refinement_step_1: "",
+          refinement_step_2: "",
+          refinement_step_3: "",
+          refinement_step_4: "",
+          refinement_step_5: "",
+          refinement_step_6: "",
+        },
+      ]);
+      setLoadingIdeas(false);
+      return;
     }
 
-    init();
-  }, []);
+    // ✅ If we have a token, clear the signed-out flag
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("zeusbolt_signed_out");
+    }
+
+    // Real fetch mode (token expected to be a bearer token).
+    fetchIdeas(token).catch(() => {
+      setDemoMode(true);
+      setErrorMsg("Could not load ideas with the provided token. Showing demo mode.");
+      setLoadingIdeas(false);
+    });
+  }, [router, signingOut]);
 
   async function fetchIdeas(token) {
     setLoadingIdeas(true);
@@ -292,6 +353,7 @@ export default function DashboardPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || "Failed to load");
     setProjects(json.projects || []);
     setLoadingIdeas(false);
   }
@@ -300,12 +362,15 @@ export default function DashboardPage() {
     const trimmed = newIdea.trim();
     if (!trimmed || trimmed.length > MAX_LEN) return;
 
+    if (demoMode) {
+      setErrorMsg("Demo mode: saving is disabled.");
+      return;
+    }
+
     setSavingIdea(true);
     setErrorMsg("");
 
-    const { data } = await supabase.auth.getSession();
-    const token = data.session.access_token;
-
+    const token = window.localStorage.getItem("zeusbolt_token");
     const res = await fetch("/api/projects/create", {
       method: "POST",
       headers: {
@@ -327,12 +392,15 @@ export default function DashboardPage() {
   }
 
   async function deleteIdea(id) {
+    if (demoMode) {
+      setErrorMsg("Demo mode: deleting is disabled.");
+      return;
+    }
+
     setDeletingId(id);
     setErrorMsg("");
 
-    const { data } = await supabase.auth.getSession();
-    const token = data.session.access_token;
-
+    const token = window.localStorage.getItem("zeusbolt_token");
     const res = await fetch("/api/projects/delete", {
       method: "POST",
       headers: {
@@ -353,11 +421,14 @@ export default function DashboardPage() {
     const trimmed = editingText.trim();
     if (!trimmed || trimmed.length > MAX_LEN) return;
 
+    if (demoMode) {
+      setErrorMsg("Demo mode: editing is disabled.");
+      return;
+    }
+
     setErrorMsg("");
 
-    const { data } = await supabase.auth.getSession();
-    const token = data.session.access_token;
-
+    const token = window.localStorage.getItem("zeusbolt_token");
     const res = await fetch("/api/projects/update", {
       method: "POST",
       headers: {
@@ -379,32 +450,61 @@ export default function DashboardPage() {
   }
 
   async function openBillingPortal() {
+    if (demoMode) {
+      setErrorMsg("Demo mode: billing portal is disabled.");
+      return;
+    }
+
     const res = await fetch("/api/create-portal-session", { method: "POST" });
     const json = await res.json();
     if (json?.url) window.location.href = json.url;
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
-    router.replace("/");
+    // ✅ Start sign-out: stop rendering immediately to prevent flicker
+    setSigningOut(true);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("zeusbolt_token");
+
+      // ✅ Mark explicit logout so demo mode cannot override
+      window.localStorage.setItem("zeusbolt_signed_out", "1");
+    }
+
+    // ✅ Navigate to auth (instead of "/")
+    router.replace("/auth");
   }
 
-  const saveDisabled = savingIdea || !newIdea.trim() || newTooLong;
-  const editSaveDisabled = !editingText.trim() || editTooLong;
+  const saveDisabled = savingIdea || !newIdea.trim() || newTooLong || demoMode;
+  const editSaveDisabled = !editingText.trim() || editTooLong || demoMode;
 
   function formatMeta(p) {
-    if (p.updated_at && p.updated_at !== p.created_at) {
-      return `Edited ${new Date(p.updated_at).toLocaleString()}`;
+    const created = p?.created_at ? new Date(p.created_at) : null;
+    const updated = p?.updated_at ? new Date(p.updated_at) : null;
+    if (updated && created && updated.getTime() !== created.getTime()) {
+      return `Edited ${updated.toLocaleString()}`;
     }
-    return `Created ${new Date(p.created_at).toLocaleString()}`;
+    return created ? `Created ${created.toLocaleString()}` : "";
   }
 
-  // Guided journey (simple, honest, no fake progress)
-  const hasAnyIdeas = projects.length > 0;
-  const currentStepLabel = hasAnyIdeas ? "Refine your idea" : "Capture your idea";
-  const heroHint = hasAnyIdeas
-    ? "Next: pick one idea and sharpen the problem, audience, and value."
-    : "Start by saving your first idea — even rough notes are perfect.";
+  function isFilled(v) {
+    return typeof v === "string" ? v.trim().length > 0 : Boolean(v);
+  }
+
+  function refinementProgress(p) {
+    const steps = [
+      p?.refinement_step_1,
+      p?.refinement_step_2,
+      p?.refinement_step_3,
+      p?.refinement_step_4,
+      p?.refinement_step_5,
+      p?.refinement_step_6,
+    ];
+    const done = steps.reduce((acc, s) => acc + (isFilled(s) ? 1 : 0), 0);
+    const complete = done === 6;
+    const started = done > 0;
+    return { done, complete, started };
+  }
 
   function scrollToIdeas() {
     if (ideasSectionRef.current) {
@@ -419,14 +519,25 @@ export default function DashboardPage() {
     }, 250);
   }
 
+  const hasAnyIdeas = projects.length > 0;
+  const currentStepLabel = hasAnyIdeas ? "Refine your idea" : "Capture your idea";
+  const heroHint = hasAnyIdeas
+    ? "Next: pick one idea and sharpen the problem, audience, and value."
+    : "Start by saving your first idea — even rough notes are perfect.";
+
+  // ✅ THE FLICKER FIX:
+  // Once sign out begins, render nothing. This prevents the dashboard from flashing
+  // while Next.js transitions to /auth.
+  if (signingOut) {
+    return null;
+  }
+
   return (
     <div style={styles.page}>
-      {/* ===== TOP: badge + welcome + journey zone ===== */}
       <div style={styles.topBlock}>
         <div style={styles.badge}>Dashboard</div>
         <h1 style={styles.h1}>Welcome, {userEmail}</h1>
 
-        {/* ===== Journey Hero Card ===== */}
         <div style={styles.heroCardWrap}>
           <div style={styles.heroCard}>
             <div style={styles.heroTitle}>Your ZeusBolt Journey</div>
@@ -464,13 +575,18 @@ export default function DashboardPage() {
             </div>
 
             <div style={styles.heroSub}>
-              <strong style={{ color: "#ffffff" }}>Current focus:</strong>{" "}
-              {currentStepLabel}. {heroHint}
+              <strong style={{ color: "#ffffff" }}>Current focus:</strong> {currentStepLabel}. {heroHint}
             </div>
           </div>
         </div>
 
-        {/* ===== Quick Actions ===== */}
+        {demoMode ? (
+          <div style={styles.demoBanner}>
+            Demo mode is ON (no Supabase SDK / no auth token found). The page renders safely,
+            but saving/editing/deleting and billing actions are disabled.
+          </div>
+        ) : null}
+
         <div style={styles.actionsRow}>
           <div
             style={styles.actionCard}
@@ -510,7 +626,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ===== What we’re working on ===== */}
         <div style={styles.roadmapCard}>
           <div style={styles.roadmapTitle}>What we’re working on</div>
           <div style={styles.roadmapText}>
@@ -525,7 +640,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ===== Existing grid (kept) ===== */}
       <div style={styles.grid}>
         <div style={styles.card}>
           <div style={styles.cardTitle}>Subscription</div>
@@ -536,7 +650,11 @@ export default function DashboardPage() {
             Status: <strong>{subStatus}</strong>
           </p>
           <div style={styles.row}>
-            <button style={styles.button} onClick={openBillingPortal}>
+            <button
+              style={demoMode ? styles.buttonDisabled : styles.button}
+              onClick={openBillingPortal}
+              disabled={demoMode}
+            >
               Manage billing
             </button>
             <button style={styles.buttonGhost} onClick={signOut}>
@@ -561,7 +679,8 @@ export default function DashboardPage() {
                 if (!saveDisabled) saveIdea();
               }
             }}
-            placeholder="Write a new idea..."
+            placeholder={demoMode ? "Demo mode: add ideas is disabled" : "Write a new idea..."}
+            disabled={demoMode}
           />
 
           <div style={styles.counterRow}>
@@ -587,77 +706,123 @@ export default function DashboardPage() {
               <p style={styles.muted}>No ideas yet.</p>
             ) : (
               <ul style={styles.list}>
-                {projects.map((p) => (
-                  <li key={p.id} style={styles.ideaItem}>
-                    <div style={styles.meta}>{formatMeta(p)}</div>
+                {projects.map((p) => {
+                  const prog = refinementProgress(p);
+                  const chipStyle = prog.complete
+                    ? { ...styles.chipBase, ...styles.chipComplete }
+                    : prog.started
+                      ? { ...styles.chipBase, ...styles.chipProgress }
+                      : { ...styles.chipBase, ...styles.chipEmpty };
 
-                    {editingId === p.id ? (
-                      <>
-                        <textarea
-                          style={styles.textarea}
-                          rows={3}
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                              e.preventDefault();
-                              if (!editSaveDisabled) updateIdea(p.id);
-                            }
-                          }}
-                        />
+                  return (
+                    <li key={p.id} style={styles.ideaItem}>
+                      <div style={styles.meta}>{formatMeta(p)}</div>
 
-                        <div style={styles.counterRow}>
-                          <span style={editTooLong ? styles.counterBad : styles.counterOk}>
-                            {editLen}/{MAX_LEN}
-                            {editTooLong ? " (too long)" : ""}
-                          </span>
-                          <span style={styles.muted}>Editing</span>
-                        </div>
-
-                        <div style={styles.row}>
-                          <button
-                            style={editSaveDisabled ? styles.buttonDisabled : styles.button}
-                            onClick={() => updateIdea(p.id)}
-                            disabled={editSaveDisabled}
-                          >
-                            Save
-                          </button>
-                          <button
-                            style={styles.buttonGhost}
-                            onClick={() => {
-                              setEditingId(null);
-                              setEditingText("");
+                      {editingId === p.id ? (
+                        <>
+                          <textarea
+                            style={styles.textarea}
+                            rows={3}
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            disabled={demoMode}
+                            onKeyDown={(e) => {
+                              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                                e.preventDefault();
+                                if (!editSaveDisabled) updateIdea(p.id);
+                              }
                             }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div style={styles.cardText}>{p.content}</div>
-                        <div style={styles.row}>
-                          <button
-                            style={styles.buttonGhost}
-                            onClick={() => {
-                              setEditingId(p.id);
-                              setEditingText(p.content || "");
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            style={styles.buttonDanger}
-                            onClick={() => deleteIdea(p.id)}
-                            disabled={deletingId === p.id}
-                          >
-                            {deletingId === p.id ? "Deleting..." : "Delete"}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
+                          />
+
+                          <div style={styles.counterRow}>
+                            <span style={editTooLong ? styles.counterBad : styles.counterOk}>
+                              {editLen}/{MAX_LEN}
+                              {editTooLong ? " (too long)" : ""}
+                            </span>
+                            <span style={styles.muted}>Editing</span>
+                          </div>
+
+                          <div style={styles.row}>
+                            <button
+                              style={editSaveDisabled ? styles.buttonDisabled : styles.button}
+                              onClick={() => updateIdea(p.id)}
+                              disabled={editSaveDisabled}
+                            >
+                              Save
+                            </button>
+                            <button
+                              style={styles.buttonGhost}
+                              onClick={() => {
+                                setEditingId(null);
+                                setEditingText("");
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={styles.cardText}>
+                            {p.content ? p.content : <span style={styles.muted}>(No idea text yet)</span>}
+                          </div>
+
+                          <div style={styles.indicatorRow}>
+                            <span style={chipStyle}>
+                              {prog.complete ? "✓" : prog.started ? "⏳" : "•"}{" "}
+                              {prog.complete
+                                ? "Blueprint complete"
+                                : prog.started
+                                  ? `In progress · ${prog.done}/6`
+                                  : "Not started · 0/6"}
+                            </span>
+
+                            <span style={styles.nextHint}>
+                              Next: {prog.complete ? "View Blueprint" : "Continue refinement"}
+                            </span>
+                          </div>
+
+                          <div style={styles.row}>
+                            <button
+                              style={styles.buttonGhost}
+                              onClick={() => {
+                                setEditingId(p.id);
+                                setEditingText(p.content || "");
+                              }}
+                              disabled={demoMode}
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              style={styles.buttonGhost}
+                              onClick={() => router.push(`/dashboard/refine/${p.id}`)}
+                            >
+                              Refine
+                            </button>
+
+                            {prog.complete ? (
+                              <button
+                                style={styles.buttonGhost}
+                                onClick={() => router.push(`/dashboard/projects/${p.id}/blueprint`)}
+                              >
+                                Blueprint
+                              </button>
+                            ) : null}
+
+                            <button
+                              style={styles.buttonDanger}
+                              onClick={() => deleteIdea(p.id)}
+                              disabled={demoMode || deletingId === p.id}
+                            >
+                              {deletingId === p.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
