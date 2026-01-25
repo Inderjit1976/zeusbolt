@@ -1,19 +1,21 @@
+"use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
+import { createClient } from "@supabase/supabase-js";
 
 /**
- * NOTE (bundler safety):
- * This file intentionally does NOT import "@supabase/supabase-js" at the top level.
- * Some browser-only bundlers (ex: Rollup in sandboxes/CDNs) choke on packages that
- * reference Node built-ins like "fs".
- *
- * In the real Next.js app, you likely DO want Supabase auth + session.
- * For now, this dashboard works in two modes:
- *  - Real mode: if you provide a token via localStorage "zeusbolt_token" it will use it.
- *  - Demo mode: if no token exists, it renders a safe demo dashboard (no writes).
- *
- * ✅ This prevents the "fs" bundling crash while keeping the UI and structure.
+ * ZeusBolt Dashboard (Production Auth)
+ * - Uses Supabase session (no localStorage zeusbolt_token)
+ * - Redirects to /auth if no session
+ * - Uses session access_token for API calls
+ * - Removes demo mode entirely
  */
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const MAX_LEN = 2000;
 
@@ -32,9 +34,8 @@ export default function DashboardPage() {
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [demoMode, setDemoMode] = useState(false);
 
-  // ✅ NEW: prevents flicker by stopping dashboard render immediately during sign out
+  // ✅ Prevents flicker by stopping dashboard render immediately during sign out
   const [signingOut, setSigningOut] = useState(false);
 
   const ideasSectionRef = useRef(null);
@@ -276,6 +277,7 @@ export default function DashboardPage() {
       },
       nextHint: { fontSize: 12, color: "#6b7280", fontWeight: 700 },
 
+      // (kept for safety even though demo mode is removed)
       demoBanner: {
         marginTop: 12,
         padding: 12,
@@ -296,56 +298,47 @@ export default function DashboardPage() {
   const editLen = editingText.length;
   const editTooLong = editLen > MAX_LEN;
 
+  // ✅ AUTH + INITIAL LOAD (Supabase session is the single source of truth)
   useEffect(() => {
-    // ✅ If sign out is in progress, do not run any auth/demo logic (prevents flicker)
     if (signingOut) return;
 
-    // Token-based (optional) so this file runs in environments without Supabase SDK.
-    const token =
-      typeof window !== "undefined" ? window.localStorage.getItem("zeusbolt_token") : null;
+    let cancelled = false;
 
-    // ✅ If user explicitly signed out, do NOT allow demo mode to take over (even with ?demo=1)
-    const signedOut =
-      typeof window !== "undefined" ? window.localStorage.getItem("zeusbolt_signed_out") : null;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
 
-    if (!token) {
-      if (signedOut === "1") {
+        if (!session) {
+          router.replace("/auth");
+          return;
+        }
+
+        if (cancelled) return;
+
+        setUserEmail(session.user?.email || "you@example.com");
+
+        await fetchIdeas(session.access_token);
+      } catch (e) {
+        // If something is seriously wrong, force auth re-entry
         router.replace("/auth");
-        return;
       }
+    })();
 
-      setDemoMode(true);
-      // Demo sample
-      setProjects([
-        {
-          id: "demo-1",
-          content: "Track my expenses",
-          created_at: new Date().toISOString(),
-          updated_at: null,
-          refinement_step_1: "",
-          refinement_step_2: "",
-          refinement_step_3: "",
-          refinement_step_4: "",
-          refinement_step_5: "",
-          refinement_step_6: "",
-        },
-      ]);
-      setLoadingIdeas(false);
-      return;
-    }
-
-    // ✅ If we have a token, clear the signed-out flag
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("zeusbolt_signed_out");
-    }
-
-    // Real fetch mode (token expected to be a bearer token).
-    fetchIdeas(token).catch(() => {
-      setDemoMode(true);
-      setErrorMsg("Could not load ideas with the provided token. Showing demo mode.");
-      setLoadingIdeas(false);
-    });
+    return () => {
+      cancelled = true;
+    };
   }, [router, signingOut]);
+
+  async function getAccessTokenOrRedirect() {
+    const { data } = await supabase.auth.getSession();
+    const session = data?.session;
+    if (!session) {
+      router.replace("/auth");
+      return null;
+    }
+    return session.access_token;
+  }
 
   async function fetchIdeas(token) {
     setLoadingIdeas(true);
@@ -353,7 +346,12 @@ export default function DashboardPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || "Failed to load");
+    if (!res.ok) {
+      setErrorMsg(json?.error || "Failed to load ideas");
+      setProjects([]);
+      setLoadingIdeas(false);
+      return;
+    }
     setProjects(json.projects || []);
     setLoadingIdeas(false);
   }
@@ -362,15 +360,15 @@ export default function DashboardPage() {
     const trimmed = newIdea.trim();
     if (!trimmed || trimmed.length > MAX_LEN) return;
 
-    if (demoMode) {
-      setErrorMsg("Demo mode: saving is disabled.");
-      return;
-    }
-
     setSavingIdea(true);
     setErrorMsg("");
 
-    const token = window.localStorage.getItem("zeusbolt_token");
+    const token = await getAccessTokenOrRedirect();
+    if (!token) {
+      setSavingIdea(false);
+      return;
+    }
+
     const res = await fetch("/api/projects/create", {
       method: "POST",
       headers: {
@@ -392,15 +390,15 @@ export default function DashboardPage() {
   }
 
   async function deleteIdea(id) {
-    if (demoMode) {
-      setErrorMsg("Demo mode: deleting is disabled.");
-      return;
-    }
-
     setDeletingId(id);
     setErrorMsg("");
 
-    const token = window.localStorage.getItem("zeusbolt_token");
+    const token = await getAccessTokenOrRedirect();
+    if (!token) {
+      setDeletingId(null);
+      return;
+    }
+
     const res = await fetch("/api/projects/delete", {
       method: "POST",
       headers: {
@@ -421,14 +419,11 @@ export default function DashboardPage() {
     const trimmed = editingText.trim();
     if (!trimmed || trimmed.length > MAX_LEN) return;
 
-    if (demoMode) {
-      setErrorMsg("Demo mode: editing is disabled.");
-      return;
-    }
-
     setErrorMsg("");
 
-    const token = window.localStorage.getItem("zeusbolt_token");
+    const token = await getAccessTokenOrRedirect();
+    if (!token) return;
+
     const res = await fetch("/api/projects/update", {
       method: "POST",
       headers: {
@@ -450,10 +445,8 @@ export default function DashboardPage() {
   }
 
   async function openBillingPortal() {
-    if (demoMode) {
-      setErrorMsg("Demo mode: billing portal is disabled.");
-      return;
-    }
+    const token = await getAccessTokenOrRedirect();
+    if (!token) return;
 
     const res = await fetch("/api/create-portal-session", { method: "POST" });
     const json = await res.json();
@@ -461,22 +454,17 @@ export default function DashboardPage() {
   }
 
   async function signOut() {
-    // ✅ Start sign-out: stop rendering immediately to prevent flicker
     setSigningOut(true);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("zeusbolt_token");
-
-      // ✅ Mark explicit logout so demo mode cannot override
-      window.localStorage.setItem("zeusbolt_signed_out", "1");
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      // ignore
     }
-
-    // ✅ Navigate to auth (instead of "/")
     router.replace("/auth");
   }
 
-  const saveDisabled = savingIdea || !newIdea.trim() || newTooLong || demoMode;
-  const editSaveDisabled = !editingText.trim() || editTooLong || demoMode;
+  const saveDisabled = savingIdea || !newIdea.trim() || newTooLong;
+  const editSaveDisabled = !editingText.trim() || editTooLong;
 
   function formatMeta(p) {
     const created = p?.created_at ? new Date(p.created_at) : null;
@@ -525,9 +513,7 @@ export default function DashboardPage() {
     ? "Next: pick one idea and sharpen the problem, audience, and value."
     : "Start by saving your first idea — even rough notes are perfect.";
 
-  // ✅ THE FLICKER FIX:
-  // Once sign out begins, render nothing. This prevents the dashboard from flashing
-  // while Next.js transitions to /auth.
+  // ✅ Once sign out begins, render nothing to prevent flashing
   if (signingOut) {
     return null;
   }
@@ -575,17 +561,11 @@ export default function DashboardPage() {
             </div>
 
             <div style={styles.heroSub}>
-              <strong style={{ color: "#ffffff" }}>Current focus:</strong> {currentStepLabel}. {heroHint}
+              <strong style={{ color: "#ffffff" }}>Current focus:</strong> {currentStepLabel}.{" "}
+              {heroHint}
             </div>
           </div>
         </div>
-
-        {demoMode ? (
-          <div style={styles.demoBanner}>
-            Demo mode is ON (no Supabase SDK / no auth token found). The page renders safely,
-            but saving/editing/deleting and billing actions are disabled.
-          </div>
-        ) : null}
 
         <div style={styles.actionsRow}>
           <div
@@ -650,11 +630,7 @@ export default function DashboardPage() {
             Status: <strong>{subStatus}</strong>
           </p>
           <div style={styles.row}>
-            <button
-              style={demoMode ? styles.buttonDisabled : styles.button}
-              onClick={openBillingPortal}
-              disabled={demoMode}
-            >
+            <button style={styles.button} onClick={openBillingPortal}>
               Manage billing
             </button>
             <button style={styles.buttonGhost} onClick={signOut}>
@@ -679,8 +655,7 @@ export default function DashboardPage() {
                 if (!saveDisabled) saveIdea();
               }
             }}
-            placeholder={demoMode ? "Demo mode: add ideas is disabled" : "Write a new idea..."}
-            disabled={demoMode}
+            placeholder={"Write a new idea..."}
           />
 
           <div style={styles.counterRow}>
@@ -711,8 +686,8 @@ export default function DashboardPage() {
                   const chipStyle = prog.complete
                     ? { ...styles.chipBase, ...styles.chipComplete }
                     : prog.started
-                      ? { ...styles.chipBase, ...styles.chipProgress }
-                      : { ...styles.chipBase, ...styles.chipEmpty };
+                    ? { ...styles.chipBase, ...styles.chipProgress }
+                    : { ...styles.chipBase, ...styles.chipEmpty };
 
                   return (
                     <li key={p.id} style={styles.ideaItem}>
@@ -725,7 +700,6 @@ export default function DashboardPage() {
                             rows={3}
                             value={editingText}
                             onChange={(e) => setEditingText(e.target.value)}
-                            disabled={demoMode}
                             onKeyDown={(e) => {
                               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                                 e.preventDefault();
@@ -764,7 +738,11 @@ export default function DashboardPage() {
                       ) : (
                         <>
                           <div style={styles.cardText}>
-                            {p.content ? p.content : <span style={styles.muted}>(No idea text yet)</span>}
+                            {p.content ? (
+                              p.content
+                            ) : (
+                              <span style={styles.muted}>(No idea text yet)</span>
+                            )}
                           </div>
 
                           <div style={styles.indicatorRow}>
@@ -773,8 +751,8 @@ export default function DashboardPage() {
                               {prog.complete
                                 ? "Blueprint complete"
                                 : prog.started
-                                  ? `In progress · ${prog.done}/6`
-                                  : "Not started · 0/6"}
+                                ? `In progress · ${prog.done}/6`
+                                : "Not started · 0/6"}
                             </span>
 
                             <span style={styles.nextHint}>
@@ -789,7 +767,6 @@ export default function DashboardPage() {
                                 setEditingId(p.id);
                                 setEditingText(p.content || "");
                               }}
-                              disabled={demoMode}
                             >
                               Edit
                             </button>
@@ -813,7 +790,7 @@ export default function DashboardPage() {
                             <button
                               style={styles.buttonDanger}
                               onClick={() => deleteIdea(p.id)}
-                              disabled={demoMode || deletingId === p.id}
+                              disabled={deletingId === p.id}
                             >
                               {deletingId === p.id ? "Deleting..." : "Delete"}
                             </button>
