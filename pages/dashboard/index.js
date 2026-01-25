@@ -420,9 +420,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={styles.page}>
-    return (
-  <div style={styles.page}>
+   <div style={styles.page}>
     <h1 style={{ color: "red" }}>DEPLOY TEST — SHOULD SEE THIS</h1>
 
       {/* ===== TOP: badge + welcome + journey zone ===== */}
