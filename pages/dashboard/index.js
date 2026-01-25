@@ -1,3 +1,5 @@
+<h1 style={{ color: "red" }}>DEPLOY TEST — SHOULD SEE THIS</h1>
+
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
