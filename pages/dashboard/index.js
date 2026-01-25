@@ -1,5 +1,3 @@
-<h1 style={{ color: "red" }}>DEPLOY TEST — SHOULD SEE THIS</h1>
-
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -522,6 +520,7 @@ export default function DashboardPage() {
 
   return (
     <div style={styles.page}>
+     <h1 style={{ color: "red" }}>DEPLOY TEST — SHOULD SEE THIS</h1>
       <div style={styles.topBlock}>
         <div style={styles.badge}>Dashboard</div>
         <h1 style={styles.h1}>Welcome, {userEmail}</h1>
